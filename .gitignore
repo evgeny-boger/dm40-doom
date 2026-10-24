@@ -1,3 +1,4 @@
 build/
 wadutil/mcudoomwadutil
 wadutil/bin/
+build-warp*/

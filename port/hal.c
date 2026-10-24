@@ -322,6 +322,14 @@ void hal_init(void)
     fwdgt_start();
     if (!clock_init(true))
         clock_init(false);
+    // The FS-loader ran USB and timers: disable and unpend every NVIC line
+    // before interrupts are enabled (only SysTick is used; external vectors
+    // are empty).
+    for (uint32_t i = 0; i < 3; i++)
+    {
+        REG32(0xE000E180u + 4 * i) = 0xFFFFFFFFu;
+        REG32(0xE000E280u + 4 * i) = 0xFFFFFFFFu;
+    }
     REG32(SYST_RVR) = HCLK_HZ / 1000u - 1u;
     REG32(SYST_CVR) = 0;
     REG32(SYST_CSR) = 7;
@@ -527,6 +535,7 @@ uint32_t wad_size(void)
 void wad_read(uint32_t off, void *dst, uint32_t n)
 {
     static int last;
+    wdt_kick();
     uint8_t *d = dst;
     while (n)
     {
@@ -607,6 +616,7 @@ bool fcache_program(uint32_t addr, uint32_t word)
 {
     if (addr < FCACHE_IMM_BASE || addr >= FCACHE_LVL_END || (addr & 3))
         return false;
+    wdt_kick();
     if (REG32(addr) == word)
         return true;
     bool ok;

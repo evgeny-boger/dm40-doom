@@ -50,7 +50,7 @@ SECTIONS
     .tcm_bss (NOLOAD) : {
         _stcm_bss = .;
         *(.tcm_bss*)
-        *(.bss.maskedData .bss.columnOffsetData .bss.columnBuffer .bss.columnBotBuffer)
+        *(.bss.columnOffsetData .bss.columnBuffer .bss.columnBotBuffer)
         *(.bss.spanstart .bss.dbg_log .bss.line.* .bss.pal.* .bss.runs .bss.oplChip)
         . = ALIGN(4);
         _etcm_bss = .;
@@ -58,6 +58,7 @@ SECTIONS
     .bss (NOLOAD) : {
         _sbss = .;
         *(.bss*)
+        *(.openings_bss*)   /* r_fast_stuff.c maskedData */
         *(COMMON)
         . = ALIGN(4);
         _ebss = .;

@@ -905,6 +905,10 @@ void M_LoadSelect(int choice)
 void M_LoadGame(int choice)
 {
     (void) choice;
+    // DM40: no save storage (extMemWrite is a stub); the slots would read
+    // WAD bytes as save games.
+    M_StartMessage("Saved games are not supported\non this meter.\n\npress a key.", NULL, false);
+    return;
     /* killough 5/26/98: exclude during demo recordings
      * cph - unless a new demo */
 
@@ -985,6 +989,8 @@ void M_SaveSelect(int choice)
 void M_SaveGame(int choice)
 {
     (void) choice;
+    M_StartMessage("Saved games are not supported\non this meter.\n\npress a key.", NULL, false);
+    return;
     // killough 10/6/98: allow savegames during single-player demo playback
     if (!_g->usergame && (!_g->demoplayback))
     {

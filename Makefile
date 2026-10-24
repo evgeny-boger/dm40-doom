@@ -7,7 +7,7 @@ CPU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
 CFLAGS = $(CPU) -Os -g -ffunction-sections -fdata-sections -fno-common \
 	-std=gnu11 -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
 	-Wno-unused-function -Wno-misleading-indentation \
-	-Iport -Idoom/include
+	-Iport -Idoom/include $(EXTRA_CFLAGS)
 LDFLAGS = $(CPU) -T link.ld -nostartfiles -Wl,--gc-sections \
 	-Wl,-Map=$(BUILD)/dm40-doom.map --specs=nano.specs --specs=nosys.specs
 SRC = $(wildcard doom/source/*.c) port/main.c port/hal.c port/startup.c \

@@ -83,6 +83,16 @@ extern uint8_t     iquetail;
 //
 // killough 5/3/98: reformatted, cleaned up
 //
+// DM40: the level geometry is read directly (not through the external
+// memory reads), so it must be in the flash cache; a level whose geometry
+// does not fit stops with a message instead of reading the SPI flash's
+// address range.
+static void requireInFlashCache(const void *p, const char *what)
+{
+    if (isOnExternalFlash(p))
+        dm40_fatal("Level too big for the flash cache (%s)", what);
+}
+
 static void P_LoadVertexes(int lump)
 {
     // TODO: remove _g->vertexes and _g->numvertexes and use the values in p_wad_level_flash_data instead
@@ -92,6 +102,7 @@ static void P_LoadVertexes(int lump)
     p_wad_level_flash_data->numvertex = W_LumpLength(lump) / sizeof(vertex_t);
     // Allocate zone memory for buffer.
     p_wad_level_flash_data->vertexes = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->vertexes, "vertexes");
     _g->vertexes = p_wad_level_flash_data->vertexes;
 
 }
@@ -107,6 +118,7 @@ static void P_LoadSegs(int lump)
     _g->numsegs = W_LumpLength(lump) / sizeof(seg_t);
     p_wad_level_flash_data->numsegs = W_LumpLength(lump) / sizeof(seg_t);
     p_wad_level_flash_data->segs = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->segs, "segs");
     _g->segs = (const seg_t*) p_wad_level_flash_data->segs;
 //    if (!_g->numsegs)
 //      I_Error("P_LoadSegs: no segs in level");
@@ -222,6 +234,7 @@ static void P_LoadNodes(int lump)
     p_wad_level_flash_data->numnodes = W_LumpLength(lump) / sizeof(mapnode_t);
     //
     p_wad_level_flash_data->nodes = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->nodes, "nodes");
     nodes = p_wad_level_flash_data->nodes; // cph - wad lump handling updated
 
     if ((!nodes) || (!numnodes))
@@ -325,6 +338,7 @@ static void P_LoadLineDefs(int lump)
     _g->numlines = W_LumpLength(lump) / sizeof(line_t);
     p_wad_level_flash_data->numlines = W_LumpLength(lump) / sizeof(line_t);
     p_wad_level_flash_data->lines = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->lines, "lines");
     _g->lines = p_wad_level_flash_data->lines;
 #if OLD_VALID_COUNT
     _g->linedata = Z_Calloc(_g->numlines, sizeof(linedata_t), PU_LEVEL, 0);
@@ -366,6 +380,7 @@ static void P_LoadSideDefs(int lump)
     _g->textureoffsets = Z_Calloc(_g->numsides, sizeof(*_g->textureoffsets), PU_LEVEL, 0);
     // TODO: remove _g->numsides and _g->sides and use the values in p_wad_level_flash_data instead.
     p_wad_level_flash_data->sides = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->sides, "sides");
     _g->sides = (side_t*) p_wad_level_flash_data->sides;
     int i;
     int n = 0, ma = 0, mi = 0;
@@ -561,6 +576,7 @@ static void P_LoadBlockMap(int lump)
 
     // TODO: remove  _g->blockmaplump and use p_wad_level_flash_data->blockmaplump instead.
     p_wad_level_flash_data->blockmaplump = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->blockmaplump, "blockmaplump");
     _g->blockmaplump = p_wad_level_flash_data->blockmaplump;
 
     _g->bmaporgx = _g->blockmaplump[0] << FRACBITS;
@@ -589,6 +605,7 @@ static void P_LoadReject(int lumpnum)
 {
     int lump = lumpnum + ML_REJECT;
     p_wad_level_flash_data->rejectmatrix = writeLumpToFlashRegion(lump, FLASH_LEVEL_REGION, true);
+    requireInFlashCache(p_wad_level_flash_data->rejectmatrix, "rejectmatrix");
     _g->rejectmatrix = p_wad_level_flash_data->rejectmatrix;
 }
 

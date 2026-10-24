@@ -1371,6 +1371,11 @@ void G_DoNewGame(void)
 
 void G_InitNew(skill_t skill, int episode, int map)
 {
+#ifdef DM40_TEST_WARP
+    // Emulator test builds: New Game starts this map of episode 1.
+    if (episode == 1 && map == 1 && !_g->demoplayback)
+        map = DM40_TEST_WARP;
+#endif
     if (_g->paused)
     {
         _g->paused = false;

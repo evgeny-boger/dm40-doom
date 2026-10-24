@@ -15,8 +15,22 @@ memory-mapped and fits in 256 KiB of RAM; this tree adds a DM40 hardware
 layer and the changes below.
 
 Status: runs in the [opendm40 emulator](https://github.com/wirenboard/opendm40/tree/main/emu)
-(title, demos, menus, E1M1 played with the touch screen). Not run on a
-device yet. No sound.
+(title, demos, menus, E1M1 played with the touch screen; E1M6, the largest
+shareware level, loads). Not run on a device yet.
+
+Known limits:
+
+- no sound, no music;
+- no saved games (Load / Save show a message);
+- only the Hynitron touch controller (the one on the tested unit) is handled,
+  not the Goodix GT1158 opendm40 also supports;
+- SPI1 runs at 12.5 MHz without opendm40's boot-time clock check; garbled
+  textures on a device would point at the SPI clock (`0x031F` = /16 in
+  `sf_init`);
+- the frame rate on a device is unknown: the emulator's timing is not
+  cycle-exact, and the MG24 port reads its flash at 2 x 40 MHz with DMA;
+- a level whose geometry does not fit the 256 KiB level cache stops with
+  "Level too big for the flash cache" (E1M6 uses 245 KiB of it).
 
 ## What is different from the MG24 port
 
@@ -65,7 +79,7 @@ the build and the WAD, and sectors 7 + 8 at every level start.
 
 ```sh
 make                      # build/dm40-doom.elf, build/dm40-doom.bin (arm-none-eabi-gcc)
-cc -std=gnu99 -O2 -w -o wadutil/mcudoomwadutil wadutil/*.c
+cc -std=gnu99 -O2 -w -Wno-error=incompatible-pointer-types -o wadutil/mcudoomwadutil wadutil/*.c
 cd wadutil && ./mcudoomwadutil /path/to/doom1.wad DOOMMCU.WAD
 ```
 
