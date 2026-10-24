@@ -3246,17 +3246,12 @@ static inline void R_RenderSegLoop(int rw_x)
     }
 }
 // 2021-13-08 next-hack: created this function to copy openings by word and not by halfword
+// DM40: memcpy instead: source / dest are only 2-byte aligned for an odd
+// start, and GCC turned the int32_t copy into ldrd / strd, which fault on an
+// unaligned address on the Cortex-M4 (UsageFault UNALIGNED, on the meter).
 static inline void fastOpeningsCopy(short *dest, short * source, int num)
 {
-    int32_t *s = (int32_t*) source;
-    int32_t *d = (int32_t*) dest;
-    for (int i = 0; i < num / 2; i++)
-    {
-    *d++ = *s++;
-    }
-    // copy any odd opening
-    if (num & 1)
-        *((short*)d) = *((short*)s);  
+    memcpy(dest, source, num * sizeof(short));
 }
 
 static boolean R_CheckOpenings(const int start)
