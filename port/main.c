@@ -37,6 +37,8 @@ int main(void)
     displayPrintln(1, "Build %s %s", __DATE__, __TIME__);
     displayPrintln(1, "Memzone size %d bytes", (int) getStaticZoneSize());
     displayPrintln(1, "SPI flash JEDEC %06x", (unsigned) sf_jedec());
+    extern bool touchPresent(void);
+    displayPrintln(1, "Touch panel: %s", touchPresent() ? "ok" : "not found");
     int r = wad_open(WAD_NAME83);
     if (r)
     {
