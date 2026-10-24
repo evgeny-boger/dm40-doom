@@ -14,9 +14,12 @@ That port already keeps the WAD in an external SPI flash that is not
 memory-mapped and fits in 256 KiB of RAM; this tree adds a DM40 hardware
 layer and the changes below.
 
-Status: runs in the [opendm40 emulator](https://github.com/wirenboard/opendm40/tree/main/emu)
-(title, menus, E1M1 and E1M2 played with the touch screen, installed through
-the vendor ROM and FS-loader). Not run on a device yet.
+Status: runs on a DM40A, installed through the vendor FS-loader: title,
+menus and E1M1 played with the touch screen, about 20 FPS on the in-game
+counter. E1M2 was played only in the
+[opendm40 emulator](https://github.com/wirenboard/opendm40/tree/main/emu).
+
+![Menus and E1M1 in the emulator](docs/img/emu-play-sheet.png)
 
 Only E1M1 and E1M2 are in the image: the level data the port keeps in
 internal flash is baked into the firmware file (below), and the image has room
@@ -33,10 +36,11 @@ Known limits:
 - SPI1 runs at 12.5 MHz without opendm40's boot-time clock check; garbled
   textures on a device would point at the SPI clock (`0x031F` = /16 in
   `sf_init`);
-- the frame rate on a device is unknown: the emulator's timing is not
-  cycle-exact, and the MG24 port reads its flash at 2 x 40 MHz with DMA.
-  Wall patches and flats that do not fit a level's region are read from the
-  SPI flash while drawing.
+- about 20 FPS on E1M1. Wall patches and flats that do not fit a level's
+  region are read from the SPI flash while drawing (polled, 12.5 MHz; the
+  MG24 port reads its flash at 2 x 40 MHz with DMA), and the frame is sent
+  to the panel synchronously. Only the low 512 KiB of the GD32F4 flash are
+  zero-wait (to 0x08080000); the end of the E1M2 region lies above that.
 
 ## What is different from the MG24 port
 
@@ -45,7 +49,7 @@ Known limits:
 | WAD | raw in two interleaved SPI flash chips, DMA | `DOOMMCU.WAD` file on the meter's FAT16 volume (W25Q128, 4096-byte sectors), read through its cluster runs, polled SPI1 at 12.5 MHz |
 | flash cache | ~1 MiB of internal flash, rewritten at each level start | baked into the image: 60 KiB WAD-wide data + one fixed region per level; the firmware never writes it |
 | flats that do not fit | always fit | LRU of 10 flats in TCM, loaded from the SPI flash on a miss |
-| display | SPI panel, DMA line buffers | 16-bit FSMC, 320x200 shown 1.5x (480x300), synchronous blit |
+| display | SPI panel, DMA line buffers | 16-bit FSMC, 320x200 shown 1.5x (480x300), synchronous blit; as in the MG24 port, the status bar rows are sent only when it changed |
 | RAM | 256 KiB contiguous | SRAM 192 KiB (frame buffers, zone; the port's 16-bit pointers need it) + TCM 64 KiB (stack, flat cache, render buffers) |
 | input | buttons / shift registers | touch screen zones + side keys (Hynitron controller, I2C2) |
 | network, sound | BLE multiplayer, OPL2 music, SFX | none |
@@ -91,9 +95,11 @@ The only runtime flash write left is `marker_zero` (three words at
 
 ## Controls
 
+Held with the side keys on the right:
+
 | Where | Action |
 |---|---|
-| left third of the screen | stick: up = forward, down = back, left / right = turn |
+| left third of the screen | stick centred at (90, 220), near the lower left corner: up = forward, down = back, left / right = turn; a dead zone around the centre |
 | centre column | top: menu; middle: next weapon; bottom: automap |
 | right third | top: use (doors, switches); bottom: fire / menu select |
 | side keys | MENU = menu, RUN = fire, AUTO = use, MF = next weapon |
@@ -135,11 +141,6 @@ ring (the port's `printf` output) from a run that read it with
 
 ## Installing on a meter
 
-Not done on a device yet. In the emulator, steps 1-2 were run through the
-vendor ROM and FS-loader (`emu/run.py chain --zero-marker --app dump` with
-both files on the disk): the loader installed the 609 KiB image, the flash
-matched `build/dm40-doom-baked.bin`, and Doom started.
-
 1. From opendm40: `DBG:UPDATE` (or from the stock firmware: its update
    function). The meter restarts into the vendor loader's update screen with
    its own USB disk.
@@ -150,6 +151,22 @@ matched `build/dm40-doom-baked.bin`, and Doom started.
    start screen says so), or let the watchdog fire. Doom zeroes the loader
    marker and resets into the same update screen; copy an opendm40 or stock
    `dm40*.bin` there.
+
+## Faults and hangs
+
+A fault draws a red bar at the bottom of the panel and stops; a hang stops
+feeding the watchdog. Either way the watchdog resets the meter about 20 s
+later, and instead of going straight to the updater Doom shows what the
+last session left in RAM (TCM `.noinit`, kept over the reset): the PC / LR
+the last SysTick interrupted, the fault's number, PC, LR, CFSR, HFSR,
+MMFAR, BFAR, and the last lines of the `dbg_log` ring (level set-up prints
+each step). POWER then goes to the updater. `arm-none-eabi-addr2line -f -i
+-e build/dm40-doom.elf <PC>` names the function; keep the ELF of every
+image installed.
+
+The emulator does not raise the Cortex-M4 UNALIGNED fault for LDRD / STRD /
+LDM / STM on an address that is not word-aligned; the meter does (the MG24
+`fastOpeningsCopy` faulted that way on the first frame, now a `memcpy`).
 
 ## License
 
