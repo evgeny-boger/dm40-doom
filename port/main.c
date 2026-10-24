@@ -35,6 +35,7 @@ int main(void)
     displayPrintln(0, "Doom on Alientek DM40");
     displayPrintln(0, "MG24 port by Nicola Wrachien (next-hack)");
     displayPrintln(1, "Build %s %s", __DATE__, __TIME__);
+    recovery_check();
     displayPrintln(1, "Memzone size %d bytes", (int) getStaticZoneSize());
     displayPrintln(1, "SPI flash JEDEC %06x", (unsigned) sf_jedec());
     extern bool touchPresent(void);

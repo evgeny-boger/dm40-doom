@@ -627,6 +627,39 @@ bool fcache_program(uint32_t addr, uint32_t word)
     return ok && REG32(addr) == word;
 }
 
+// ---------------------------------------------------------------- loader marker
+// The 12-byte ROM / FS-loader record at 0x08008000. Programming it to zero
+// (1 -> 0 bits only, no erase; opendm40 boot.rs zero_marker) makes the vendor
+// FS-loader show its update screen with its own USB disk at the next reset.
+// Touches exactly these three words.
+#define MARKER          0x08008000u
+
+bool marker_zero(void)
+{
+    __disable_irq();
+    fmc_unlock();
+    if (fmc_wait())
+    {
+        REG32(FMC_STAT) = 0x1F3;
+        REG32(FMC_CTL) = 0x200u | 1u;  // PSZ x32, PG
+        for (uint32_t i = 0; i < 3; i++)
+        {
+            uint32_t a = MARKER + 4 * i;
+            if (REG32(a) != 0)
+            {
+                REG32(a) = 0;
+                __DSB();
+                if (!fmc_wait())
+                    break;
+            }
+        }
+        REG32(FMC_CTL) = 0;
+    }
+    REG32(FMC_CTL) = 1u << 31;
+    __enable_irq();
+    return REG32(MARKER) == 0 && REG32(MARKER + 4) == 0 && REG32(MARKER + 8) == 0;
+}
+
 // ---------------------------------------------------------------- debug log
 // A RAM ring the emulator monitor / GDB can read (symbol dbg_log).
 char dbg_log[4096];

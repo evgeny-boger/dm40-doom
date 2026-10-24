@@ -57,6 +57,12 @@ void wad_read(uint32_t off, void *dst, uint32_t n);
 bool fcache_erase(int sector);             // 6, 7 or 8, anything else refused
 bool fcache_program(uint32_t addr, uint32_t word);
 
+// Zero the vendor loader marker (next reset: loader update screen + USB disk).
+bool marker_zero(void);
+// Way back to the vendor updater (port/recovery.c).
+void recovery_check(void);
+void enter_updater(const char *why) __attribute__((noreturn));
+
 // Keys / touch as the KEY_* bits of boards.h.
 void input_init(void);
 uint16_t input_keys(void);
