@@ -103,13 +103,19 @@ samples the PC; [tools/dbglog.py](tools/dbglog.py) decodes the `dbg_log` RAM
 ring (the port's `printf` output) from a run that read it with
 `sysbus ReadBytes`.
 
-## Installing on a meter (not tested yet)
+## Installing on a meter
+
+Not done on a device yet. In the emulator, steps 1-2 were run through the
+vendor ROM and FS-loader (`emu/run.py chain --zero-marker` with both files
+on the disk): the loader installed the packed image and Doom started.
 
 1. From opendm40: `DBG:UPDATE` (or from the stock firmware: its update
    function). The meter restarts into the vendor loader's update screen with
    its own USB disk.
-2. Copy `DOOMMCU.WAD` and the packed image (`dm40fw.py pack` from opendm40 on
-   `build/dm40-doom.bin`, named `dm40*.bin`) to that disk, press update.
+2. Copy `DOOMMCU.WAD` and the packed image to that disk, press update. Pack
+   with opendm40's `stock/dm40fw.py pack build/dm40-doom.bin dm40doom.bin
+   --pad` (the name must match `dm40*.bin`, and it must be the only such
+   file in the root).
 3. To go back: hold the power key 3 s in the window after start-up (the
    start screen says so), or let the watchdog fire. Doom zeroes the loader
    marker and resets into the same update screen; copy an opendm40 or stock
