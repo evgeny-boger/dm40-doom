@@ -4,17 +4,22 @@ OBJCOPY = arm-none-eabi-objcopy
 SIZE = arm-none-eabi-size
 BUILD = build
 CPU = -mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard
-CFLAGS = $(CPU) -O2 -g -ffunction-sections -fdata-sections -fno-common \
+CFLAGS = $(CPU) -Os -g -ffunction-sections -fdata-sections -fno-common \
 	-std=gnu11 -Wall -Wno-unused-variable -Wno-unused-but-set-variable \
 	-Wno-unused-function -Wno-misleading-indentation \
 	-Iport -Idoom/include
 LDFLAGS = $(CPU) -T link.ld -nostartfiles -Wl,--gc-sections \
 	-Wl,-Map=$(BUILD)/dm40-doom.map --specs=nano.specs --specs=nosys.specs
 SRC = $(wildcard doom/source/*.c) port/main.c port/hal.c port/startup.c \
-	port/graphics.c port/font8x8.c port/printf.c port/stubs.c port/input.c
+	port/graphics.c port/font8x8.c port/printf.c port/stubs.c port/input.c port/flatcache.c
 OBJ = $(patsubst %.c,$(BUILD)/%.o,$(SRC))
 
 all: $(BUILD)/dm40-doom.elf $(BUILD)/dm40-doom.bin
+
+# Size-optimised except the renderer's inner loops.
+HOT = doom/source/r_fast_stuff.c doom/source/r_draw.c doom/source/r_plane.c \
+	doom/source/r_things.c doom/source/r_main.c
+$(patsubst %.c,$(BUILD)/%.o,$(HOT)): CFLAGS += -O2
 
 $(BUILD)/%.o: %.c
 	@mkdir -p $(dir $@)

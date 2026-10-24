@@ -892,7 +892,7 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
         differentLevel = true;
     }
     oldSkill = skill;
-    // DM40: the level region is a whole 128 KiB sector, erased and rebuilt at
+    // DM40: the level region is two whole 128 KiB sectors, erased and rebuilt at
     // every level setup (also a restart of the same level).
     differentLevel = true;
     flashCacheNewLevel();

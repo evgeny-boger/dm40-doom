@@ -156,8 +156,8 @@ void initImmutableFlashRegion()
     computeFlashCacheSignature();
     if (memcmp((const void *) FCACHE_IMM_END, fcacheSignature, sizeof(fcacheSignature)))
     {
-        printf("Flash cache signature mismatch: erasing sector 7\r\n");
-        if (!fcache_erase(7))
+        printf("Flash cache signature mismatch: erasing sector 6\r\n");
+        if (!fcache_erase(6))
             flashCacheFail("erase", FCACHE_IMM_BASE);
     }
     //
@@ -213,12 +213,13 @@ void getFileLumpByNum(int n, filelump_t *fl)
     extMemSetCurrentAddress(WAD_ADDRESS + p_wad_immutable_flash_data->wadHeader.infotableofs + n * sizeof(filelump_t));
     extMemGetDataFromCurrentAddress(fl, sizeof(filelump_t));
 }
-// DM40 flash cache (hal.c fcache_*): the immutable region is sector 7
-// (FCACHE_IMM_BASE, signature in its last 16 bytes), the level region sector
-// 8 (FCACHE_LVL_BASE). A region is only ever erased whole: sector 7 when its
-// signature does not match this build + WAD (initImmutableFlashRegion), sector
-// 8 at every level setup (flashCacheNewLevel). In between, every word is
+// DM40 flash cache (hal.c fcache_*): the immutable region is sector 6
+// (FCACHE_IMM_BASE, signature in its last 16 bytes), the level region sectors
+// 7 + 8 (FCACHE_LVL_BASE). A region is only ever erased whole: sector 6 when
+// its signature does not match this build + WAD (initImmutableFlashRegion),
+// sectors 7 + 8 at every level setup (flashCacheNewLevel). In between, every word is
 // written once onto erased flash, or rewritten with the same value.
+#define FCACHE_LVL_RESERVE (16 * 1024)
 #define FCACHE_SIG_MAGIC 0x44344D44u   // "DM4D"
 
 static void computeFlashCacheSignature(void)
@@ -235,18 +236,21 @@ static void computeFlashCacheSignature(void)
 
 static void flashCacheFail(const char *what, uint32_t addr)
 {
-    I_Error("Flash cache: %s at 0x%08X", what, (unsigned) addr);
+    dm40_fatal("Flash cache: %s at 0x%08X", what, (unsigned) addr);
 }
 
 void flashCacheNewLevel(void)
 {
-    if (!fcache_erase(8))
+    if (!fcache_erase(7) || !fcache_erase(8))
         flashCacheFail("erase", FCACHE_LVL_BASE);
 }
 
 uint32_t getUserFlashRegionRemainingSpace()
 {
-    int size = (FCACHE_LVL_END - FCACHE_LVL_BASE) - currentLevelFlashOffset;
+    // FCACHE_LVL_RESERVE: room for the level buffers written without a space
+    // check (textures, subsectors, line lists: never more on the MG24, whose
+    // cache is ~1 MiB).
+    int size = (FCACHE_LVL_END - FCACHE_LVL_BASE) - FCACHE_LVL_RESERVE - currentLevelFlashOffset;
     // we need to take into account that we will need to store also the lumpPtrArray.
     if (lumpPtrArrayStoredInFlash == 0)
         size -= getNumberOfLumps() * sizeof(void*);
@@ -392,6 +396,7 @@ void* storeImmutableDataHeader()
 {
     uint32_t *src = (uint32_t*) p_wad_immutable_flash_data;
     p_wad_immutable_flash_data->levelData = (wad_level_flash_data_t*) FCACHE_LVL_BASE;
+    printf("DM40 immutable cache: %u bytes\r\n", (unsigned) currentImmutableFlashOffset);
     for (unsigned int i = 0; i < sizeof(*p_wad_immutable_flash_data) / sizeof(uint32_t); i++)
     {
         storeWordToFlash((uint32_t*) FCACHE_IMM_BASE + i, src[i], FLASH_IMMUTABLE_REGION, true);
@@ -422,6 +427,7 @@ void* storeLevelDataHeader(boolean levelChanged)
             storeWordToFlash((uint32_t*) p_wad_immutable_flash_data->levelData + i, src[i], FLASH_LEVEL_REGION, true);
         }
         printf("Storing level values\r\n");
+        printf("DM40 level cache: %u bytes\r\n", (unsigned) currentLevelFlashOffset);
     }
     else
     {

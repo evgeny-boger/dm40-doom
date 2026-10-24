@@ -551,12 +551,12 @@ void wad_read(uint32_t off, void *dst, uint32_t n)
 }
 
 // ---------------------------------------------------------------- flash cache
-// GD32F427 1 MiB: sector 7 = 0x08060000, sector 8 = 0x08080000 (128 KiB
-// each). Sector 9 is the vendor FS-loader, 10 the calibration: never
-// touched. Erase takes a sector NUMBER and refuses anything but 7 and 8;
-// program refuses any address outside 0x08060000..0x0809FFFF. The image
-// itself ends below 0x08060000 (link.ld asserts it), so the loader's body
-// CRC does not cover the cache.
+// GD32F427 1 MiB: sectors 6, 7, 8 = 0x08040000, 0x08060000, 0x08080000
+// (128 KiB each). Sector 9 is the vendor FS-loader, 10 the calibration:
+// never touched. Erase takes a sector NUMBER and refuses anything but 6, 7
+// and 8; program refuses any address outside 0x08040000..0x0809FFFF. The
+// image itself ends below 0x08040000 (link.ld asserts it), so the loader's
+// body CRC does not cover the cache.
 static bool fmc_wait(void)
 {
     for (uint32_t n = 0; REG32(FMC_STAT) & (1u << 16); n++)
@@ -580,7 +580,7 @@ static void fmc_unlock(void)
 
 bool fcache_erase(int sector)
 {
-    if (sector != 7 && sector != 8)
+    if (sector != 6 && sector != 7 && sector != 8)
         return false;
     bool ok;
     __disable_irq();
@@ -589,8 +589,11 @@ bool fcache_erase(int sector)
     if (ok)
     {
         REG32(FMC_STAT) = 0x1F3;
-        REG32(FMC_CTL) = 0x200u | ((uint32_t)sector << 3) | 2u;  // PSZ x32, SN, SER
-        REG32(FMC_CTL) |= 1u << 16;                           // START
+        // SER + SN first, then the same value with START (no read-back:
+        // the emulator's controller model does not keep SER).
+        uint32_t ctl = 0x200u | ((uint32_t)sector << 3) | 2u;  // PSZ x32, SN, SER
+        REG32(FMC_CTL) = ctl;
+        REG32(FMC_CTL) = ctl | (1u << 16);                     // START
         ok = fmc_wait() && !(REG32(FMC_STAT) & 0x1F2);
         REG32(FMC_CTL) = 0;
     }

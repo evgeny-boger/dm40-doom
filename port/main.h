@@ -11,7 +11,7 @@
 
 #define DISABLE_CACHING_TEXTURE_TO_FLASH  0
 #define TEST_DISABLE_ASYNCH_LOAD          0
-#define FAST_CPU_SMALL_FLASH              0
+#define FAST_CPU_SMALL_FLASH              1
 #define CORRECT_TABLE_ERROR               1
 #define CACHE_ALL_COLORMAP_TO_RAM         0
 #define DEMO_SUPPORT                      1

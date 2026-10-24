@@ -215,3 +215,22 @@ void displayPrintln(bool update, const char *format, ...)
         while (displayData.dmaBusy);
     }
 }
+
+// Fatal error: the message on the console screen, then wait (the watchdog is
+// kept fed so the message stays readable; power off to leave).
+void dm40_fatal(const char *format, ...)
+{
+    char msg[MAX_STRING_SIZE];
+    va_list va;
+    va_start(va, format);
+    vsnprintf(msg, sizeof(msg), format, va);
+    va_end(va);
+    dbg_puts("FATAL: ");
+    dbg_puts(msg);
+    dbg_puts("\r\n");
+    displayData.pPalette = (uint16_t *) palette16;
+    setDisplayPen(2, 1);
+    displayPrintln(1, "FATAL: %s", msg);
+    for (;;)
+        wdt_kick();
+}

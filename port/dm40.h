@@ -49,12 +49,12 @@ int wad_open(const char *name83);          // 0 = ok, <0 = error code
 uint32_t wad_size(void);
 void wad_read(uint32_t off, void *dst, uint32_t n);
 
-// Internal flash cache (sectors 7 and 8 only, see hal.c).
-#define FCACHE_IMM_BASE   0x08060000u      // sector 7
-#define FCACHE_IMM_END    0x0807FFF0u      // last 16 bytes: signature
-#define FCACHE_LVL_BASE   0x08080000u      // sector 8
+// Internal flash cache (sectors 6, 7 and 8 only, see hal.c).
+#define FCACHE_IMM_BASE   0x08040000u      // sector 6
+#define FCACHE_IMM_END    0x0805FFF0u      // last 16 bytes: signature
+#define FCACHE_LVL_BASE   0x08060000u      // sectors 7 + 8
 #define FCACHE_LVL_END    0x080A0000u
-bool fcache_erase(int sector);             // 7 or 8, anything else refused
+bool fcache_erase(int sector);             // 6, 7 or 8, anything else refused
 bool fcache_program(uint32_t addr, uint32_t word);
 
 // Keys / touch as the KEY_* bits of boards.h.
@@ -63,4 +63,5 @@ uint16_t input_keys(void);
 
 // Debug text over the console screen (graphics.c) and the emulator log.
 void dbg_puts(const char *s);
+void dm40_fatal(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
 #endif

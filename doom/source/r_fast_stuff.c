@@ -2378,8 +2378,9 @@ FASTFUN static void R_DoDrawPlane(visplane_t *pl)
             dsvars.source = W_CacheLumpNum(_g->firstflat + flattranslation[pl->picnum] + pl->picnum);   // next-hack: now flats translation are just offset to the original picture index.
             if (isOnExternalFlash(dsvars.source))
             {
-                printf("Error, found a lump %d at address 0x%08X, picnum %d, name %s \r\n", (unsigned int) (_g->firstflat + flattranslation[pl->picnum]), (unsigned int) W_CacheLumpNum(_g->firstflat + flattranslation[pl->picnum]), flattranslation[pl->picnum], W_GetNameForNum(_g->firstflat + flattranslation[pl->picnum]));
-                while (1);
+                // DM40: not in the flash cache; RAM LRU (port/flatcache.c).
+                extern const void *flatCacheGet(const void *extAddress);
+                dsvars.source = flatCacheGet(dsvars.source);
             }
 
             planeheight = D_abs(FIXED16_TO_FIXED32(pl->height16) - viewz);
