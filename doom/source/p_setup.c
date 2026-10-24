@@ -289,7 +289,9 @@ static void P_LoadThings(int lump)
         }
     }
     // create temporary buffer for static xy positions
-    _g->full_static_mobj_xy_and_type_values = Z_Calloc(_g->totalstatic, sizeof(full_static_mobj_xy_and_type_t), PU_STATIC, NULL);
+    // DM40: kept in RAM (PU_LEVEL): its contents depend on the skill, the
+    // baked level region must not.
+    _g->full_static_mobj_xy_and_type_values = Z_Calloc(_g->totalstatic, sizeof(full_static_mobj_xy_and_type_t), PU_LEVEL, NULL);
     int numpos = _g->totalstatic;
     // reset static stuff.
     _g->totalstatic = 0;
@@ -312,12 +314,7 @@ static void P_LoadThings(int lump)
         P_SpawnMapThing(&mt);
     }
     printf("Num static things %d\r\n", _g->totalstatic);
-    // save the xy static position buffer in flash. 
-    void *tmp = _g->full_static_mobj_xy_and_type_values;
-    // note: we store numpos elements and not _g->xy_static_pos, otherwise we need to rewrite everything even if we modified skill.
-    _g->full_static_mobj_xy_and_type_values =  writeBufferToFlashRegion(tmp, numpos * sizeof(*_g->full_static_mobj_xy_and_type_values), FLASH_LEVEL_REGION, true);
-    // free precious RAM
-    Z_Free(tmp);
+    (void) numpos;
 }
 
 //
@@ -909,10 +906,11 @@ void P_SetupLevel(int episode, int map, int playermask, skill_t skill)
         differentLevel = true;
     }
     oldSkill = skill;
-    // DM40: the level region is two whole 128 KiB sectors, erased and rebuilt at
-    // every level setup (also a restart of the same level).
+    // DM40: every level has its own region baked into the image; a setup
+    // (also a restart of the same level) goes through the whole bake path
+    // again, which only compares against the flash.
     differentLevel = true;
-    flashCacheNewLevel();
+    flashCacheSetLevel(episode, map);
     // allocate RAM where texture data shall be stored.
     if (differentLevel)
     {

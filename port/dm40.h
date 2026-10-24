@@ -49,13 +49,24 @@ int wad_open(const char *name83);          // 0 = ok, <0 = error code
 uint32_t wad_size(void);
 void wad_read(uint32_t off, void *dst, uint32_t n);
 
-// Internal flash cache (sectors 6, 7 and 8 only, see hal.c).
-#define FCACHE_IMM_BASE   0x08040000u      // sector 6
-#define FCACHE_IMM_END    0x0805FFF0u      // last 16 bytes: signature
-#define FCACHE_LVL_BASE   0x08060000u      // sectors 7 + 8
-#define FCACHE_LVL_END    0x080A0000u
-bool fcache_erase(int sector);             // 6, 7 or 8, anything else refused
-bool fcache_program(uint32_t addr, uint32_t word);
+// Doom flash cache, part of the image: the WAD-wide ("immutable") region at
+// _fcache_start (after the code), then one region per level of
+// port/levels.c. Filled by an emulator bake run (tools/bake.py); on a meter
+// the firmware only compares against it.
+extern const uint8_t _fcache_start[];
+#define FCACHE_START      ((uint32_t)_fcache_start)
+#define FCACHE_IMM_SIZE   0xF000u
+#define FCACHE_IMM_BASE   FCACHE_START
+#define FCACHE_IMM_END    (FCACHE_START + FCACHE_IMM_SIZE - 16)  // last 16 bytes: signature
+#define FCACHE_END        0x080A0000u      // sector 9: vendor FS-loader
+bool fcache_bake_mode(void);               // emulator bake run (key in .noinit)
+bool fcache_program(uint32_t addr, uint32_t word);  // bake mode, FCACHE_START..FCACHE_END
+// Region of a baked level (false: the level is not in this image).
+bool fcache_level_region(int episode, int map, uint32_t *base, uint32_t *end);
+// Next baked map of the episode after `map`, 0 if none.
+int fcache_next_level(int episode, int map);
+// Bake run: set up every level of port/levels.c once, then halt.
+void fcache_bake_levels(void) __attribute__((noreturn));
 
 // Zero the vendor loader marker (next reset: loader update screen + USB disk).
 bool marker_zero(void);

@@ -560,12 +560,10 @@ void wad_read(uint32_t off, void *dst, uint32_t n)
 }
 
 // ---------------------------------------------------------------- flash cache
-// GD32F427 1 MiB: sectors 6, 7, 8 = 0x08040000, 0x08060000, 0x08080000
-// (128 KiB each). Sector 9 is the vendor FS-loader, 10 the calibration:
-// never touched. Erase takes a sector NUMBER and refuses anything but 6, 7
-// and 8; program refuses any address outside 0x08040000..0x0809FFFF. The
-// image itself ends below 0x08040000 (link.ld asserts it), so the loader's
-// body CRC does not cover the cache.
+// The cache is part of the image (_fcache_start..0x080A0000, written by the
+// vendor FS-loader with the rest of it). Only an emulator bake run programs
+// it, word by word onto erased flash; there is no erase. Sector 9
+// (0x080A0000, vendor FS-loader) and above are never touched.
 static bool fmc_wait(void)
 {
     for (uint32_t n = 0; REG32(FMC_STAT) & (1u << 16); n++)
@@ -587,34 +585,19 @@ static void fmc_unlock(void)
     }
 }
 
-bool fcache_erase(int sector)
+// Key an emulator bake run writes to RAM before the first instruction
+// (tools/bake.py); never set on a meter, so there the image's cache is
+// read-only.
+uint32_t fcache_bake_key[2] __attribute__((section(".noinit")));
+
+bool fcache_bake_mode(void)
 {
-    if (sector != 6 && sector != 7 && sector != 8)
-        return false;
-    bool ok;
-    __disable_irq();
-    fmc_unlock();
-    ok = fmc_wait();
-    if (ok)
-    {
-        REG32(FMC_STAT) = 0x1F3;
-        // SER + SN first, then the same value with START (no read-back:
-        // the emulator's controller model does not keep SER).
-        uint32_t ctl = 0x200u | ((uint32_t)sector << 3) | 2u;  // PSZ x32, SN, SER
-        REG32(FMC_CTL) = ctl;
-        REG32(FMC_CTL) = ctl | (1u << 16);                     // START
-        ok = fmc_wait() && !(REG32(FMC_STAT) & 0x1F2);
-        REG32(FMC_CTL) = 0;
-    }
-    REG32(FMC_CTL) = 1u << 31;
-    __enable_irq();
-    wdt_kick();
-    return ok;
+    return fcache_bake_key[0] == 0x454B4142u && fcache_bake_key[1] == 0x4D4F4F44u;  // "BAKEDOOM"
 }
 
 bool fcache_program(uint32_t addr, uint32_t word)
 {
-    if (addr < FCACHE_IMM_BASE || addr >= FCACHE_LVL_END || (addr & 3))
+    if (!fcache_bake_mode() || addr < FCACHE_START || addr >= FCACHE_END || (addr & 3))
         return false;
     wdt_kick();
     if (REG32(addr) == word)

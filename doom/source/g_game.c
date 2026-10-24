@@ -90,6 +90,7 @@
 #include "p_inter.h"
 #include "g_game.h"
 #include "lprintf.h"
+#include "dm40.h"
 #include "i_main.h"
 #include "i_system.h"
 #include "i_video.h"
@@ -899,6 +900,12 @@ void G_SecretExitLevel(void)
 // G_DoCompleted
 //
 
+static boolean dm40LevelBaked(int episode, int map)
+{
+    uint32_t base, end;
+    return fcache_level_region(episode, map, &base, &end);
+}
+
 void G_DoCompleted(void)
 {
     _g->gameaction = ga_nothing;
@@ -978,6 +985,14 @@ void G_DoCompleted(void)
         }
         else
             _g->wminfo.next = _g->gamemap;          // go to next level
+        // DM40: only the levels of port/levels.c are in the image; skip to the
+        // next of them (G_WorldDone ends the episode when there is none).
+        if (!dm40LevelBaked(_g->gameepisode, _g->wminfo.next + 1))
+        {
+            int next = fcache_next_level(_g->gameepisode, _g->gamemap);
+            if (next)
+                _g->wminfo.next = next - 1;
+        }
     }
 
     _g->wminfo.maxkills = _g->totalkills;
@@ -1059,7 +1074,7 @@ void G_WorldDone(void)
                 break;
         }
     }
-    else if (_g->gamemap == 8)
+    else if (_g->gamemap == 8 || !dm40LevelBaked(_g->gameepisode, _g->wminfo.next + 1))
         _g->gameaction = ga_victory; // cph - after ExM8 summary screen, show victory stuff
 }
 
