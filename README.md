@@ -25,8 +25,7 @@ for about 340 KiB of it.
 Known limits:
 
 - two levels, E1M1 and E1M2 ([port/levels.c](port/levels.c)); leaving E1M2
-  ends the episode (not run in the emulator); no demos (they play E1M5, E1M3,
-  E1M7);
+  ends the episode (finale text); no demos (they play E1M5, E1M3, E1M7);
 - no sound, no music;
 - no saved games (Load / Save show a message);
 - only the Hynitron touch controller (the one on the tested unit) is handled,
@@ -80,7 +79,10 @@ programs the regions onto erased flash, and the emulator saves the flash. On a
 meter the key is absent: the same level setup code compares each word with
 the flash instead of writing it (w_wad.c `programFlashWord`), and stops with
 "baked data differs" on a difference. Level restarts and other skills give the
-same words (the skill-dependent thing list stays in RAM). The image must be
+same words (the skill-dependent thing list stays in RAM; a buffer whose
+length is not a multiple of 4 is padded with zeros, not with the zone bytes
+after it). In the emulator this was run with SRAM and TCM filled with a
+pattern before start, through E1M1 -> intermission -> E1M2 -> finale. The image must be
 baked again after every build: the cache holds absolute addresses, and its
 signature includes the build time.
 

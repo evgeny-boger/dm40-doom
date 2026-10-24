@@ -289,6 +289,7 @@ void storeWordToFlash(uint32_t *dest, uint32_t word, uint8_t flashRegion, boolea
 void* writeBufferToFlashRegion(void *buffer, int size, uint8_t flashRegion, boolean updateSize)
 {
     uint32_t *address;
+    int bytes = size;
     size = (size + FLASH_ALIGNMENT - 1) & ~(FLASH_ALIGNMENT - 1);
     if (flashRegion == FLASH_IMMUTABLE_REGION)
     {
@@ -300,9 +301,17 @@ void* writeBufferToFlashRegion(void *buffer, int size, uint8_t flashRegion, bool
     }
     uint32_t *s = buffer;
     uint32_t *d = address;
-    for (int i = 0; i < size / 4; i++)
+    for (int i = 0; i < bytes / 4; i++)
     {
         storeWordToFlash(d++, *s++, flashRegion, false);
+    }
+    // DM40: pad a partial last word with zeros instead of the bytes after the
+    // buffer (zone contents: they differ between runs, the baked data must not).
+    for (int i = bytes / 4 * 4; i < size; i += 4)
+    {
+        uint32_t w = 0;
+        memcpy(&w, (uint8_t*) buffer + i, bytes - i < 4 ? bytes - i : 4);
+        storeWordToFlash(d++, w, flashRegion, false);
     }
     if (flashRegion == FLASH_IMMUTABLE_REGION)
     {
