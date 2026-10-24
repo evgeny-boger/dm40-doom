@@ -43,12 +43,65 @@ void enter_updater(const char *why)
     NVIC_SystemReset();
 }
 
+// After a watchdog reset: where the last session was (dm40_diag) and the
+// end of its log, until the power key is pressed (or 5 min).
+static void show_diag(void)
+{
+    const struct dm40_diag *g = &dm40_diag;
+    displayPrintln(1, "Watchdog reset. Last tick PC %08x LR %08x", (unsigned) g->prev_pc, (unsigned) g->prev_lr);
+    if (g->fault)
+        displayPrintln(1, "Fault %u PC %08x LR %08x CFSR %08x", (unsigned) g->fault, (unsigned) g->fault_pc,
+                       (unsigned) g->fault_lr, (unsigned) g->cfsr);
+    if (g->fault)
+        displayPrintln(1, "HFSR %08x MMFAR %08x BFAR %08x", (unsigned) g->hfsr, (unsigned) g->mmfar, (unsigned) g->bfar);
+    displayPrintln(1, "Log before the reset:");
+    // The last LOG_LINES lines before this boot's output.
+    enum { LOG_LINES = 16, LOG_COLS = 59 };
+    uint32_t end = g->boot_pos, start = end, n = 0;
+    while (start > 0 && end - start < sizeof(dbg_log) - 1)
+    {
+        if (dbg_log[(start - 1) & (sizeof(dbg_log) - 1)] == '\n' && start != end && ++n > LOG_LINES)
+            break;
+        start--;
+    }
+    char line[LOG_COLS + 1];
+    uint32_t k = 0;
+    for (uint32_t i = start; i < end; i++)
+    {
+        char c = dbg_log[i & (sizeof(dbg_log) - 1)];
+        if (c == '\r')
+            continue;
+        if (c == '\n' || k == LOG_COLS)
+        {
+            line[k] = 0;
+            displayPrintln(1, "%s", line);
+            k = 0;
+            if (c == '\n')
+                continue;
+        }
+        line[k++] = (c >= 32 && c < 127) ? c : '.';
+    }
+    if (k)
+    {
+        line[k] = 0;
+        displayPrintln(1, "%s", line);
+    }
+    displayPrintln(1, "Press POWER to go to the updater.");
+    uint32_t t = time_ms();
+    while (!power_down() && time_ms() - t < 300000u)
+        wdt_kick();
+}
+
 void recovery_check(void)
 {
     rstsck = REG32(RCU_RSTSCK);
     REG32(RCU_RSTSCK) |= RSTFC;
     if ((rstsck & FWDGTRSTF) && !(rstsck & (SWRSTF | PORRSTF)))
+    {
+        show_diag();
         enter_updater("Watchdog reset");
+    }
+    dm40_diag.fault = 0;
 
     // The power-on press: wait for its release (at most 2 s).
     uint32_t t = time_ms();

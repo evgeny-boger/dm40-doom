@@ -155,11 +155,21 @@ void wdt_kick(void)
     alive_ms = ms_count;
 }
 
-void SysTick_Handler(void)
+__attribute__((used)) void systick_c(const uint32_t *frame)
 {
+    dm40_diag.pc = frame[6];
+    dm40_diag.lr = frame[5];
     uint32_t now = ++ms_count;
     if (now - alive_ms < WDT_ALIVE_MS)
         REG32(FWDGT_CTL) = 0xAAAA;
+}
+
+// The exception frame (r0-r3, r12, lr, pc, xpsr) is at the MSP: thread
+// and handler mode both run on it.
+__attribute__((naked)) void SysTick_Handler(void)
+{
+    __asm volatile("mov r0, sp\n"
+                   "b systick_c\n");
 }
 
 uint32_t time_ms(void)
@@ -313,8 +323,11 @@ static void board_init(void)
     pins(GPIOA, 1u << 6, 2, 0, 9);
 }
 
+static void diag_boot(void);
+
 void hal_init(void)
 {
+    diag_boot();
     // Power hold first (the ROM raised PE2 already; keep it).
     modify32(RCU_AHB1EN, 0, 1u << 4);
     REG32(GPIOE + G_BOP) = 1u << 2;
@@ -654,9 +667,26 @@ bool marker_zero(void)
 }
 
 // ---------------------------------------------------------------- debug log
-// A RAM ring the emulator monitor / GDB can read (symbol dbg_log).
-char dbg_log[4096];
-uint32_t dbg_log_pos;
+// A RAM ring the emulator monitor / GDB can read (symbol dbg_log). Not
+// cleared at reset, so recovery.c can show the end of the session a
+// watchdog reset cut off.
+#define DIAG_MAGIC  0x47414944u  // "DIAG"
+char dbg_log[4096] __attribute__((section(".noinit")));
+uint32_t dbg_log_pos __attribute__((section(".noinit")));
+struct dm40_diag dm40_diag __attribute__((section(".noinit")));
+
+static void diag_boot(void)
+{
+    if (dm40_diag.magic != DIAG_MAGIC)
+    {
+        memset(&dm40_diag, 0, sizeof(dm40_diag));
+        dm40_diag.magic = DIAG_MAGIC;
+        dbg_log_pos = 0;
+    }
+    dm40_diag.prev_pc = dm40_diag.pc;
+    dm40_diag.prev_lr = dm40_diag.lr;
+    dm40_diag.boot_pos = dbg_log_pos;
+}
 
 void _putchar(char c)
 {

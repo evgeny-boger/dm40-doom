@@ -80,5 +80,18 @@ uint16_t input_keys(void);
 
 // Debug text over the console screen (graphics.c) and the emulator log.
 void dbg_puts(const char *s);
+
+// Kept across a watchdog reset (TCM .noinit, with dbg_log): the PC / LR the
+// last SysTick interrupted, a fault's registers, and where this boot's log
+// starts. recovery.c shows them after a watchdog reset.
+struct dm40_diag
+{
+    uint32_t magic, pc, lr;
+    uint32_t prev_pc, prev_lr, boot_pos;    // snapshot at boot
+    uint32_t fault, cfsr, hfsr, mmfar, bfar, fault_pc, fault_lr;
+};
+extern struct dm40_diag dm40_diag;
+extern char dbg_log[4096];
+extern uint32_t dbg_log_pos;
 void dm40_fatal(const char *format, ...) __attribute__((noreturn, format(printf, 1, 2)));
 #endif

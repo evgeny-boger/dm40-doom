@@ -73,11 +73,28 @@ __attribute__((used, section(".text.reset"))) void reset_c(void)
         ;
 }
 
-// A fault: red bar on the panel and a hang; the watchdog then resets.
-__attribute__((used)) void fault_handler(void)
+// A fault: registers into dm40_diag, red bar on the panel and a hang; the
+// watchdog then resets and recovery.c shows them.
+__attribute__((used)) void fault_c(const uint32_t *frame)
 {
     __disable_irq();
+    dm40_diag.fault = REG32(0xE000ED04) & 0x1FF;  // ICSR.VECTACTIVE
+    dm40_diag.cfsr = REG32(0xE000ED28);
+    dm40_diag.hfsr = REG32(0xE000ED2C);
+    dm40_diag.mmfar = REG32(0xE000ED34);
+    dm40_diag.bfar = REG32(0xE000ED38);
+    dm40_diag.fault_pc = frame[6];
+    dm40_diag.fault_lr = frame[5];
     lcd_fill(0, 310, 480, 10, 0xF800);
     for (;;)
         ;
+}
+
+__attribute__((naked)) void fault_handler(void)
+{
+    __asm volatile("tst lr, #4\n"
+                   "ite eq\n"
+                   "mrseq r0, msp\n"
+                   "mrsne r0, psp\n"
+                   "b fault_c\n");
 }
