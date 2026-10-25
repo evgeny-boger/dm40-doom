@@ -13,8 +13,7 @@ memory-mapped and fits in 256 KiB of RAM; this tree adds a DM40 hardware
 layer and the changes below.
 
 Status: runs on a DM40A, installed through the vendor FS-loader: title,
-menus and E1M1 played with the touch screen, about 20 FPS on the in-game
-counter.
+menus and E1M1 played with the touch screen, about 25 FPS on E1M1.
 
 ![Menus and E1M1 in the emulator](docs/img/emu-play-sheet.png)
 
@@ -25,13 +24,12 @@ Known limits:
 - no saved games (Load / Save show a message);
 - only the Hynitron touch controller (the one on the tested unit) is handled,
   not the Goodix GT1158 opendm40 also supports;
-- SPI1 runs at 12.5 MHz without opendm40's boot-time clock check; garbled
-  textures on a device would point at the SPI clock (`0x031F` = /16 in
-  `sf_init`);
-- about 20 FPS on E1M1. Wall patches and flats that do not fit a level's
-  region are read from the SPI flash while drawing (polled, 12.5 MHz; the
-  MG24 port reads its flash at 2 x 40 MHz with DMA), and the frame is sent
-  to the panel synchronously. Only the low 512 KiB of the GD32F4 flash are
+- about 25 FPS on E1M1. Wall patches and flats that do not fit a level's
+  region are read from the SPI flash while drawing (polled, 25 MHz after a
+  boot-time check as in opendm40, else 12.5 MHz; the MG24 port reads its
+  flash at 2 x 40 MHz with DMA), and the frame is sent to the panel
+  synchronously. The top line shows the frame time split (game tic, 3D
+  view, SPI reads inside it, panel transfer) and the SPI divider. Only the low 512 KiB of the GD32F4 flash are
   zero-wait (to 0x08080000): level data past the first 128 KiB of a level's
   cache (sector 8) is read with wait states.
 
