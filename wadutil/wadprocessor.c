@@ -233,7 +233,7 @@ bool processVertexes(wadfile_t *wadfile, uint32_t lumpNum)
     // get number of vertex
     uint32_t vtxCount = vxl->lump.size / sizeof(mapvertex_t);
     // allocate new vertex
-    vertex_t* newVtx = malloc( sizeof (vertex_t) * vtxCount);
+    vertex_t* newVtx = calloc(1,  sizeof (vertex_t) * vtxCount);
     //
     mapvertex_t* oldVtx = (mapvertex_t*) vxl->data;
     // precalculate vertex
@@ -243,7 +243,7 @@ bool processVertexes(wadfile_t *wadfile, uint32_t lumpNum)
         newVtx[i].y = (oldVtx[i].y << 16);
     }
     // allocate new lump info
-    lump_t *newVxl = malloc(sizeof (lump_t));
+    lump_t *newVxl = calloc(1, sizeof (lump_t));
     // copy name
     memcpy(newVxl->lump.name, vxl->lump.name, sizeof (vxl->lump.name));
     // change data and size information
@@ -271,7 +271,7 @@ bool processLines(wadfile_t *wadfile, uint32_t lumpNum)
 
     uint32_t lineCount = lines->lump.size / sizeof(maplinedef_t);
 
-    line_t* newLines = malloc (sizeof(line_t) * lineCount);
+    line_t* newLines = calloc(1, sizeof(line_t) * lineCount);
 
     maplinedef_t* oldLines = (maplinedef_t*) lines->data;
 
@@ -329,7 +329,7 @@ bool processLines(wadfile_t *wadfile, uint32_t lumpNum)
 
 
     // allocate new lump info
-    lump_t *newLine = malloc(sizeof (lump_t));
+    lump_t *newLine = calloc(1, sizeof (lump_t));
     // copy name
     memcpy(newLine->lump.name, lines->lump.name, sizeof (lines->lump.name));
     // change data and size information
@@ -357,7 +357,7 @@ bool processSegs(wadfile_t *wadfile, uint32_t lumpNum)
 
     uint32_t segCount = segs->lump.size / sizeof(mapseg_t);
 
-    seg_t* newSegs = malloc(sizeof(seg_t) * segCount);
+    seg_t* newSegs = calloc(1, sizeof(seg_t) * segCount);
 
     mapseg_t* oldSegs = (mapseg_t*) segs->data;
 
@@ -454,7 +454,7 @@ bool processSegs(wadfile_t *wadfile, uint32_t lumpNum)
 
 
      // allocate new lump info
-    lump_t *newSeg = malloc(sizeof (lump_t));
+    lump_t *newSeg = calloc(1, sizeof (lump_t));
     // copy name
     memcpy(newSeg->lump.name, segs->lump.name, sizeof (segs->lump.name));
     // change data and size information
@@ -482,7 +482,7 @@ bool processSides(wadfile_t *wadfile, uint32_t lumpNum)
 
     uint32_t sideCount = sides->lump.size / sizeof(mapsidedef_t);
 
-    sidedef_t* newSides = malloc(sizeof(sidedef_t) * sideCount);
+    sidedef_t* newSides = calloc(1, sizeof(sidedef_t) * sideCount);
 
     mapsidedef_t* oldSides = (mapsidedef_t*) sides->data;
 
@@ -499,7 +499,7 @@ bool processSides(wadfile_t *wadfile, uint32_t lumpNum)
     }
 
        // allocate new lump info
-    lump_t *newSide = malloc(sizeof (lump_t));
+    lump_t *newSide = calloc(1, sizeof (lump_t));
     // copy name
     memcpy(newSide->lump.name, sides->lump.name, sizeof (sides->lump.name));
     // change data and size information
@@ -634,9 +634,9 @@ static bool processPatches(wadfile_t *wadfile, int firstLump, int lastLump)
         if (0 == patchLump->lump.size) // sprites and texture patches share the same format. However they are separted by 0-length markers
             continue;
         // allocate new lump info
-        lump_t *newPatchLump = malloc(sizeof (lump_t));
+        lump_t *newPatchLump = calloc(1, sizeof (lump_t));
         // create an empty patch whose size is the same as the old patch
-        patch_t *newPatch = (patch_t *) malloc (patchLump->lump.size);
+        patch_t *newPatch = (patch_t *) calloc(1, patchLump->lump.size);
         // make an exact copy of the old ump
         memcpy (newPatch, patchLump->data, patchLump->lump.size);
         //
@@ -821,7 +821,7 @@ void convertRectangularBitmapToPatch(lump_t * lump, uint8_t *textureBuffer, int 
     // add topdelta, length, pad, data[heigth], pad, topdelta
     size += (1 + 1 + 1 + height + 1 + 1) * width;
     //
-    patch_t *patchData = malloc(size);
+    patch_t *patchData = calloc(1, size);
     // already set lump size and data ptr
     lump->lump.size = size;
     lump->data = patchData;
@@ -854,7 +854,7 @@ int addPatchToPnames(wadfile_t *wadfile, char *name)
 
     pnamesLump = getLumpByNum(wadfile, lumpNum);
 
-    uint8_t *newPnamesData = malloc(pnamesLump->lump.size + 8);
+    uint8_t *newPnamesData = calloc(1, pnamesLump->lump.size + 8);
 
     memcpy (newPnamesData, pnamesLump->data, pnamesLump->lump.size);
 
@@ -867,7 +867,7 @@ int addPatchToPnames(wadfile_t *wadfile, char *name)
     memcpy (newPnamesData + 4 + count * 8, name, 8);
 
     // allocate new lump info
-    lump_t *newPnames = malloc(sizeof (lump_t));
+    lump_t *newPnames = calloc(1, sizeof (lump_t));
     // copy name
     memcpy(newPnames->lump.name, pnamesLump->lump.name, sizeof (pnamesLump->lump.name));
     // change data and size information
@@ -949,7 +949,7 @@ static void convertCompositeTextures(wadfile_t *wadfile)
         if (mtexture->height & 3)
             printf("Warning, texture %d has height %d\r\n", texture_num, mtexture->height);
         // allocate buffer for texture. Nofte that this has x-y swapped
-        uint8_t *textureBuffer = malloc(mtexture->height * mtexture->width);
+        uint8_t *textureBuffer = calloc(1, mtexture->height * mtexture->width);
         for (int x = 0; x < mtexture->width; x++)
         {
             R_ComposeColumn(wadfile,mtexture, x, &textureBuffer[mtexture->height * x]);

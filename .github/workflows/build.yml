@@ -1,0 +1,37 @@
+# Build check: the firmware links within the flash layout of link.ld, and the
+# WAD converter gives the DOOMMCU.WAD the baked images expect. Baking the
+# flash cache (tools/bake.py) needs the opendm40 emulator with a meter's
+# flash dumps, so releases are made locally (tools/release.sh); the ELF here
+# is not installable by itself.
+name: build
+
+on:
+  push:
+    branches: [master]
+    tags: ['v*']
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '14.2.Rel1'
+
+      - name: Firmware
+        run: |
+          make -j"$(nproc)"
+          arm-none-eabi-size build/dm40-doom.elf
+
+      - name: DOOMMCU.WAD from the shareware doom1.wad
+        run: tools/make-wad.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dm40-doom-unbaked-${{ github.sha }}
+          path: |
+            build/dm40-doom.elf
+            build/dm40-doom.map

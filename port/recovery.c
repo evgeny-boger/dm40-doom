@@ -48,12 +48,14 @@ void enter_updater(const char *why)
 static void show_diag(void)
 {
     const struct dm40_diag *g = &dm40_diag;
-    displayPrintln(1, "Watchdog reset. Last tick PC %08x LR %08x", (unsigned) g->prev_pc, (unsigned) g->prev_lr);
+    // At most 59 characters per line (480 / 8 pixels).
+    displayPrintln(1, "Watchdog reset. Last tick: PC %08x LR %08x", (unsigned) g->prev_pc, (unsigned) g->prev_lr);
     if (g->fault)
-        displayPrintln(1, "Fault %u PC %08x LR %08x CFSR %08x", (unsigned) g->fault, (unsigned) g->fault_pc,
-                       (unsigned) g->fault_lr, (unsigned) g->cfsr);
-    if (g->fault)
-        displayPrintln(1, "HFSR %08x MMFAR %08x BFAR %08x", (unsigned) g->hfsr, (unsigned) g->mmfar, (unsigned) g->bfar);
+    {
+        displayPrintln(1, "Fault %u: PC %08x LR %08x", (unsigned) g->fault, (unsigned) g->fault_pc, (unsigned) g->fault_lr);
+        displayPrintln(1, "CFSR %08x HFSR %08x", (unsigned) g->cfsr, (unsigned) g->hfsr);
+        displayPrintln(1, "MMFAR %08x BFAR %08x", (unsigned) g->mmfar, (unsigned) g->bfar);
+    }
     displayPrintln(1, "Log before the reset:");
     // The last LOG_LINES lines before this boot's output.
     enum { LOG_LINES = 16, LOG_COLS = 59 };

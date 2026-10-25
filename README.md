@@ -1,10 +1,8 @@
 # Doom for the Alientek DM40
 
-A separate firmware for the Alientek DM40 multimeter (GD32F427, 200 MHz,
-256 KiB RAM, ILI9488 480x320) that runs shareware Doom. It does not replace
-or change [opendm40](https://github.com/wirenboard/opendm40): it is a
-different image installed the same way, and the way back is the vendor
-updater.
+Firmware for the Alientek DM40 multimeter (GD32F427, 200 MHz, 256 KiB RAM,
+ILI9488 480x320) that runs shareware Doom. It is installed with the vendor
+updater, and the way back is the same updater.
 
 ![E1M1 in the emulator](docs/img/emu-demo.png)
 
@@ -16,8 +14,7 @@ layer and the changes below.
 
 Status: runs on a DM40A, installed through the vendor FS-loader: title,
 menus and E1M1 played with the touch screen, about 20 FPS on the in-game
-counter. E1M2 was played only in the
-[opendm40 emulator](https://github.com/wirenboard/opendm40/tree/main/emu).
+counter.
 
 ![Menus and E1M1 in the emulator](docs/img/emu-play-sheet.png)
 
@@ -95,30 +92,36 @@ The only runtime flash write left is `marker_zero` (three words at
 
 ## Controls
 
-Held with the side keys on the right:
+![Touch zones and side keys](docs/img/controls.png)
 
-| Where | Action |
-|---|---|
-| left third of the screen | stick centred at (90, 220), near the lower left corner: up = forward, down = back, left / right = turn; a dead zone around the centre |
-| centre column | top: menu; middle: next weapon; bottom: automap |
-| right third | top: use (doors, switches); bottom: fire / menu select |
-| side keys | MENU = menu, RUN = fire, AUTO = use, MF = next weapon |
-| power key, held 1.5 s | switch off |
+The stick is centred at (90, 220) with a dead zone of 22 px; the zones are in
+[port/input.c](port/input.c), the picture is drawn by
+[tools/controls-image.py](tools/controls-image.py). In menus the stick moves
+the cursor, FIRE selects, MENU goes back.
 
 ## Building
 
 ```sh
-make                      # build/dm40-doom.elf, build/dm40-doom.bin (arm-none-eabi-gcc)
-cc -std=gnu99 -O2 -w -Wno-error=incompatible-pointer-types -o wadutil/mcudoomwadutil wadutil/*.c
-(cd wadutil && ./mcudoomwadutil /path/to/doom1.wad DOOMMCU.WAD)
-tools/bake.py ../opendm40 wadutil/DOOMMCU.WAD   # build/dm40-doom-baked.bin, build/dm40doom.bin
+make                      # build/dm40-doom.elf, build/dm40-doom.bin (arm-none-eabi-gcc 14.2)
+tools/make-wad.sh         # build/DOOMMCU.WAD
+tools/bake.py ../opendm40 build/DOOMMCU.WAD   # build/dm40-doom-baked.bin, build/dm40doom.bin
 ```
 
-`mcudoomwadutil` must run in the directory that holds `mcudoom_0_4.wad`.
-`tools/bake.py` needs an opendm40 checkout (its emulator and
-`stock/dm40fw.py`) and takes about a minute; it also packs the update file.
-The shareware `doom1.wad` (v1.9, md5 `f0cefca49926d00903cf57551d901abe`) is
-in Debian's `doom-wad-shareware` package.
+[tools/make-wad.sh](tools/make-wad.sh) builds the converter
+(`wadutil/`, next-hack's MCUDoomWadUtil) and converts the shareware
+`doom1.wad` v1.9 (md5 `f0cefca49926d00903cf57551d901abe`), downloaded from
+Debian's `doom-wad-shareware` package or given as an argument; the result
+always has the same md5, which the script checks (the converter here
+allocates zeroed memory, so padding bytes no longer differ between runs).
+`tools/bake.py` needs an opendm40 checkout (its emulator with a meter's
+flash dumps, and `stock/dm40fw.py`) and takes about a minute; it also packs
+the update file.
+
+CI ([.github/workflows/build.yml](.github/workflows/build.yml)) builds the
+firmware and checks the WAD conversion; it cannot bake (no flash dumps
+there). Releases are made with `tools/release.sh TAG ../opendm40`: a clean
+worktree of the tag, `make-wad.sh`, `bake.py`, then a GitHub release with
+`dm40doom.bin`, `dm40-doom.elf` and `SHA256SUMS`.
 
 ## Running in the emulator
 
@@ -141,16 +144,29 @@ ring (the port's `printf` output) from a run that read it with
 
 ## Installing on a meter
 
+From a [release](https://github.com/evgeny-boger/dm40-doom/releases):
+`dm40doom.bin` (the update file) and `dm40-doom.elf` (for `addr2line`, see
+below). `DOOMMCU.WAD` is not attached: make it with `tools/make-wad.sh`
+([Building](#building)); each image needs exactly that file.
+
+![Installing](docs/img/install.png)
+
 1. From opendm40: `DBG:UPDATE` (or from the stock firmware: its update
    function). The meter restarts into the vendor loader's update screen with
    its own USB disk.
-2. Copy `DOOMMCU.WAD` and `build/dm40doom.bin` (from `tools/bake.py`) to
-   that disk, press update. The name must match `dm40*.bin`, and it must be
+2. Copy `DOOMMCU.WAD` and `dm40doom.bin` to that disk, press update. The name must match `dm40*.bin`, and it must be
    the only such file in the root.
-3. To go back: hold the power key 3 s in the window after start-up (the
-   start screen says so), or let the watchdog fire. Doom zeroes the loader
-   marker and resets into the same update screen; copy an opendm40 or stock
-   `dm40*.bin` there.
+3. Doom starts; press MENU, then New Game.
+
+### Going back
+
+![Going back to the updater](docs/img/go-back.png)
+
+Switch the meter off (POWER 1.5 s) and on, then hold POWER for 3 s while the
+start screen shows "Hold POWER 3s now". Doom zeroes the loader marker and
+resets into the update screen; copy an opendm40 or stock `dm40*.bin` there
+and press Update. After a watchdog reset the fault screen below comes
+first, and POWER goes to the same update screen.
 
 ## Faults and hangs
 
@@ -160,9 +176,14 @@ later, and instead of going straight to the updater Doom shows what the
 last session left in RAM (TCM `.noinit`, kept over the reset): the PC / LR
 the last SysTick interrupted, the fault's number, PC, LR, CFSR, HFSR,
 MMFAR, BFAR, and the last lines of the `dbg_log` ring (level set-up prints
-each step). POWER then goes to the updater. `arm-none-eabi-addr2line -f -i
--e build/dm40-doom.elf <PC>` names the function; keep the ELF of every
-image installed.
+each step). POWER then goes to the updater.
+
+![Fault screen on a DM40A (first device run: UNALIGNED in fastOpeningsCopy)](docs/img/fault-screen.jpg)
+
+`arm-none-eabi-addr2line -f -i -e dm40-doom.elf <PC>` names the function,
+with the ELF of the installed image (attached to each release; keep your
+own for local builds). The photo above was taken from an earlier build,
+which cut the register lines at 60 characters.
 
 The emulator does not raise the Cortex-M4 UNALIGNED fault for LDRD / STRD /
 LDM / STM on an address that is not word-aligned; the meter does (the MG24

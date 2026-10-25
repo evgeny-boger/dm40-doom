@@ -31,7 +31,7 @@ bool loadWad(const char *fileName, wadfile_t *wadfile)
     rewind(fp);
     // read whole file in memory for convenience.
     uint8_t *tmpBuffer;
-    tmpBuffer = malloc(sz);
+    tmpBuffer = calloc(1, sz);
     //
 
     int read = 0;
@@ -72,7 +72,7 @@ bool loadWad(const char *fileName, wadfile_t *wadfile)
        // memcpy(*lumps, sizeof (int32_t) * *lumpFound , &tmpBuffer[header.infotableofs]);
         //
         filelump_t *fileLumpTable =  (filelump_t *) &tmpBuffer[wadfile->header.infotableofs];
-        wadfile->lumps = malloc(wadfile->header.numlumps * sizeof(lump_t));
+        wadfile->lumps = calloc(1, wadfile->header.numlumps * sizeof(lump_t));
         lump_t *lumpTable = wadfile->lumps;
         for (int i = 0; i < wadfile->header.numlumps; i++)
         {
@@ -81,7 +81,7 @@ bool loadWad(const char *fileName, wadfile_t *wadfile)
             // copy data
             lumpTable[i].lump.size = fileLumpTable[i].size; // we need to put the original size
             memcpy(lumpTable[i].lump.name, fileLumpTable[i].name, sizeof(lumpTable[i].lump.name));
-            lumpTable[i].data = malloc(lumpSize);
+            lumpTable[i].data = calloc(1, lumpSize);
             memset(lumpTable[i].data, 0, lumpSize);
             memcpy(lumpTable[i].data, &tmpBuffer[fileLumpTable[i].filepos], lumpSize);
         }
@@ -158,7 +158,7 @@ void replaceLump(wadfile_t *wadfile, lump_t *newLump, int index)
 void insertLump(wadfile_t *wadfile, lump_t *newLump, int index)
 {
     // create new table
-    lump_t *newTable = malloc((wadfile->header.numlumps + 1) * sizeof(lump_t));
+    lump_t *newTable = calloc(1, (wadfile->header.numlumps + 1) * sizeof(lump_t));
     lump_t *oldTable = wadfile->lumps;
     // copy all lumps before index
     int i = 0;
@@ -186,7 +186,7 @@ void removeLump(wadfile_t * wadfile, int index)
         return;
     // create new table
     // create new table
-    lump_t *newTable = malloc((wadfile->header.numlumps - 1) * sizeof(lump_t));
+    lump_t *newTable = calloc(1, (wadfile->header.numlumps - 1) * sizeof(lump_t));
     lump_t *oldTable = wadfile->lumps;
     // copy all lumps before index
     int i = 0;
