@@ -11,10 +11,10 @@ CFLAGS = $(CPU) -Os -g -ffunction-sections -fdata-sections -fno-common \
 LDFLAGS = $(CPU) -T link.ld -nostartfiles -Wl,--gc-sections \
 	-Wl,-Map=$(BUILD)/dm40-doom.map --specs=nano.specs --specs=nosys.specs
 SRC = $(wildcard doom/source/*.c) port/main.c port/hal.c port/startup.c \
-	port/graphics.c port/font8x8.c port/printf.c port/stubs.c port/input.c port/flatcache.c port/recovery.c port/levels.c
+	port/graphics.c port/font8x8.c port/printf.c port/stubs.c port/input.c port/flatcache.c port/recovery.c
 OBJ = $(patsubst %.c,$(BUILD)/%.o,$(SRC))
 
-all: $(BUILD)/dm40-doom.elf $(BUILD)/dm40-doom.bin
+all: $(BUILD)/dm40-doom.elf $(BUILD)/dm40-doom.bin $(BUILD)/dm40doom.bin
 
 # Size-optimised except the renderer's inner loops.
 HOT = doom/source/r_fast_stuff.c doom/source/r_draw.c doom/source/r_plane.c \
@@ -31,6 +31,10 @@ $(BUILD)/dm40-doom.elf: $(OBJ) link.ld
 
 $(BUILD)/dm40-doom.bin: $(BUILD)/dm40-doom.elf
 	$(OBJCOPY) -O binary --gap-fill=0xff $< $@
+
+# The update file for the vendor updater (copy it as dm40*.bin).
+$(BUILD)/dm40doom.bin: $(BUILD)/dm40-doom.bin tools/dm40fw.py
+	python3 tools/dm40fw.py pack $< $@ --pad
 
 clean:
 	rm -rf $(BUILD)

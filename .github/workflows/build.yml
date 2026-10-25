@@ -1,8 +1,5 @@
-# Build check: the firmware links within the flash layout of link.ld, and the
-# WAD converter gives the DOOMMCU.WAD the baked images expect. Baking the
-# flash cache (tools/bake.py) needs the opendm40 emulator with a meter's
-# flash dumps, so releases are made locally (tools/release.sh); the ELF here
-# is not installable by itself.
+# Build the firmware and the update file, check the WAD conversion; on a v*
+# tag, publish a release with dm40doom.bin and dm40-doom.elf.
 name: build
 
 on:
@@ -14,6 +11,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -25,13 +24,33 @@ jobs:
         run: |
           make -j"$(nproc)"
           arm-none-eabi-size build/dm40-doom.elf
+          (cd build && sha256sum dm40doom.bin dm40-doom.elf > SHA256SUMS)
 
       - name: DOOMMCU.WAD from the shareware doom1.wad
         run: tools/make-wad.sh
 
       - uses: actions/upload-artifact@v4
         with:
-          name: dm40-doom-unbaked-${{ github.sha }}
+          name: dm40-doom-${{ github.sha }}
           path: |
+            build/dm40doom.bin
             build/dm40-doom.elf
             build/dm40-doom.map
+            build/SHA256SUMS
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cat > notes.md <<EOF
+          Doom for the Alientek DM40, ${GITHUB_REF_NAME} (${GITHUB_SHA::7}), shareware episode 1.
+
+          - \`dm40doom.bin\`: the update file for the vendor updater.
+          - \`dm40-doom.elf\`: symbols for the fault screen (\`arm-none-eabi-addr2line -f -i -e dm40-doom.elf <PC>\`).
+          - \`DOOMMCU.WAD\` is not attached: make it with \`tools/make-wad.sh\`.
+
+          Install: [README](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/README.md#installing-on-a-meter).
+          EOF
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md \
+              build/dm40doom.bin build/dm40-doom.elf build/SHA256SUMS

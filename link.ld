@@ -3,9 +3,8 @@
  *
  *  A 0x08004000..0x08008000  vectors, reset
  *    0x08008000..0x08008010  loader/ROM marker hole (0xFF in the image)
- *  B 0x08008010..           code + rodata
- *    _fcache_start..0x080A0000  Doom flash cache, baked by tools/bake.py
- *                            (WAD-wide region, then the levels of port/levels.c)
+ *  B 0x08008010..0x08040000  code + rodata; must end below sector 6
+ *    0x08040000..0x080A0000  Doom flash cache (sectors 6, 7, 8; hal.c)
  *    0x080A0000..            vendor FS-loader, UID data, calibration
  *  SRAM 192 KiB: .data, .bss (zone, frame buffers; the port's 16-bit
  *       pointers address 0x20000000 + 4 * n)
@@ -14,7 +13,7 @@
 MEMORY
 {
     FLASH_A (rx) : ORIGIN = 0x08004000, LENGTH = 0x4000
-    FLASH_B (rx) : ORIGIN = 0x08008010, LENGTH = 0x080A0000 - 0x08008010
+    FLASH_B (rx) : ORIGIN = 0x08008010, LENGTH = 0x08040000 - 0x08008010
     TCM (rw)     : ORIGIN = 0x10000000, LENGTH = 64K
     SRAM (rw)    : ORIGIN = 0x20000000, LENGTH = 192K
 }
@@ -23,8 +22,8 @@ _stack_top = ORIGIN(TCM) + LENGTH(TCM);
 
 SECTIONS
 {
-    /* Region A (16 KiB before the marker): vectors, reset, and cold code
-       (intermission, menus, printf). */
+    /* Region A: vectors, reset, and cold code (intermission, menus, printf) so the
+       rest fits below sector 6. */
     .vectors : {
         KEEP(*(.vectors)) *(.text.reset)
         *wi_stuff.o(.text* .rodata*)
@@ -46,8 +45,8 @@ SECTIONS
         _edata = .;
     } > SRAM AT > FLASH_B
     _image_end = LOADADDR(.data) + SIZEOF(.data);
-    _fcache_start = ALIGN(_image_end, 16);
-    /* Bake key (hal.c fcache_bake_key): not cleared at reset. */
+    /* Kept over a reset (not cleared by reset_c): dbg_log and dm40_diag for
+       the fault screen (recovery.c). */
     .noinit (NOLOAD) : { *(.noinit*) } > TCM
     /* Large CPU-only buffers never addressed through the 16-bit pointers:
        TCM, leaving SRAM to the zone. */
@@ -68,8 +67,7 @@ SECTIONS
         _ebss = .;
     } > SRAM
     _stack_size = _stack_top - _etcm_bss;
-    /* WAD-wide region (FCACHE_IMM_SIZE) + 320 KiB for port/levels.c. */
-    ASSERT(_fcache_start + 0xF000 + 320K <= 0x080A0000, "no room for the baked levels")
+    ASSERT(_image_end <= 0x08040000, "image reaches the flash cache (sector 6)")
     ASSERT(_stack_size >= 12288, "less than 12 KiB of stack in TCM")
     _szone = ALIGN(_ebss, 8);
     _ezone = ORIGIN(SRAM) + LENGTH(SRAM);

@@ -18,14 +18,9 @@ counter.
 
 ![Menus and E1M1 in the emulator](docs/img/emu-play-sheet.png)
 
-Only E1M1 and E1M2 are in the image: the level data the port keeps in
-internal flash is baked into the firmware file (below), and the image has room
-for about 340 KiB of it.
-
 Known limits:
 
-- two levels, E1M1 and E1M2 ([port/levels.c](port/levels.c)); leaving E1M2
-  ends the episode (finale text); no demos (they play E1M5, E1M3, E1M7);
+- shareware episode 1 only (the shareware WAD);
 - no sound, no music;
 - no saved games (Load / Save show a message);
 - only the Hynitron touch controller (the one on the tested unit) is handled,
@@ -37,14 +32,15 @@ Known limits:
   region are read from the SPI flash while drawing (polled, 12.5 MHz; the
   MG24 port reads its flash at 2 x 40 MHz with DMA), and the frame is sent
   to the panel synchronously. Only the low 512 KiB of the GD32F4 flash are
-  zero-wait (to 0x08080000); the end of the E1M2 region lies above that.
+  zero-wait (to 0x08080000): level data past the first 128 KiB of a level's
+  cache (sector 8) is read with wait states.
 
 ## What is different from the MG24 port
 
 | | MG24 port | DM40 |
 |---|---|---|
 | WAD | raw in two interleaved SPI flash chips, DMA | `DOOMMCU.WAD` file on the meter's FAT16 volume (W25Q128, 4096-byte sectors), read through its cluster runs, polled SPI1 at 12.5 MHz |
-| flash cache | ~1 MiB of internal flash, rewritten at each level start | baked into the image: 60 KiB WAD-wide data + one fixed region per level; the firmware never writes it |
+| flash cache | ~1 MiB of internal flash, rewritten at each level start | sector 6 (128 KiB) WAD-wide data, sectors 7 + 8 (256 KiB) the current level, rewritten at each level start |
 | flats that do not fit | always fit | LRU of 10 flats in TCM, loaded from the SPI flash on a miss |
 | display | SPI panel, DMA line buffers | 16-bit FSMC, 320x200 shown 1.5x (480x300), synchronous blit; as in the MG24 port, the status bar rows are sent only when it changed |
 | RAM | 256 KiB contiguous | SRAM 192 KiB (frame buffers, zone; the port's 16-bit pointers need it) + TCM 64 KiB (stack, flat cache, render buffers) |
@@ -59,36 +55,27 @@ leave room for the cache.
 | Address | Sector | Content |
 |---|---|---|
 | 0x08000000 | 0 | ROM bootloader (vendor), never touched |
-| 0x08004000 .. | 1 .. | this image: code (~225 KiB), then the baked cache (to 0x0809C3xx) |
+| 0x08004000 .. 0x08040000 | 1 .. 5 | this image (~225 KiB; link.ld stops the build if it reaches sector 6) |
 | 0x08008000 | 2 | 12-byte loader marker; zeroed only to return to the updater |
+| 0x08040000 | 6 | WAD-wide cache, a signature of the WAD in its last 16 bytes |
+| 0x08060000 | 7, 8 | the current level's cache |
 | 0x080A0000 .. | 9 .. 11 | vendor FS-loader, UID data, calibration, never touched |
 
-The MG24 port converts the level data (vertexes, lines, sides, segs, nodes,
-blockmap, sectors ...) on every level start and keeps it in internal flash,
-which the renderer reads like RAM; on the DM40 there is no RAM for it (E1M2:
-~170 KiB). Here that data is produced once, in the emulator, and shipped in
-the image:
+As in the MG24 port, the level data (vertexes, lines, sides, segs, nodes,
+blockmap, sectors ...) is converted from the WAD at every level start and
+kept in internal flash, which the renderer reads like RAM; there is no RAM
+for it (E1M6: ~220 KiB). Sectors 7 and 8 are erased and rewritten at every
+level start, also a restart after death; the level's geometry comes first,
+flats and wall patches fill the rest of the 256 KiB, and what does not fit
+is read from the SPI flash while drawing. Sector 6 is rewritten only when
+its signature does not match the WAD (first start, another WAD). The
+vendor updater erases sectors 1 to 8 when it installs an image, so the
+cache is rebuilt after every install. Each level start is one erase cycle
+of sectors 7 and 8; the rated cycle count of this flash is not checked here.
 
-- `_fcache_start` (after the code): WAD-wide region, 60 KiB;
-- then one fixed region per level of [port/levels.c](port/levels.c)
-  (E1M1 120 KiB, E1M2 the rest). The level's geometry is mandatory; the rest
-  of its region holds flats and wall patches.
-
-[tools/bake.py](tools/bake.py) runs the image in the emulator with a bake key
-in RAM (hal.c `fcache_bake_key`); the firmware sets up each level, which
-programs the regions onto erased flash, and the emulator saves the flash. On a
-meter the key is absent: the same level setup code compares each word with
-the flash instead of writing it (w_wad.c `programFlashWord`), and stops with
-"baked data differs" on a difference. Level restarts and other skills give the
-same words (the skill-dependent thing list stays in RAM; a buffer whose
-length is not a multiple of 4 is padded with zeros, not with the zone bytes
-after it). In the emulator this was run with SRAM and TCM filled with a
-pattern before start, through E1M1 -> intermission -> E1M2 -> finale. The image must be
-baked again after every build: the cache holds absolute addresses, and its
-signature includes the build time.
-
-The only runtime flash write left is `marker_zero` (three words at
-0x08008000), on the way back to the updater.
+Level geometry per map, KiB: E1M1 81, E1M2 167, E1M3 163, E1M4 130, E1M5
+131, E1M6 220, E1M7 155, E1M8 75, E1M9 108. A level whose geometry does not
+fit the region stops with a message.
 
 ## Controls
 
@@ -102,9 +89,8 @@ the cursor, FIRE selects, MENU goes back.
 ## Building
 
 ```sh
-make                      # build/dm40-doom.elf, build/dm40-doom.bin (arm-none-eabi-gcc 14.2)
+make                      # build/dm40doom.bin (update file), build/dm40-doom.elf (arm-none-eabi-gcc 14.2)
 tools/make-wad.sh         # build/DOOMMCU.WAD
-tools/bake.py ../opendm40 build/DOOMMCU.WAD   # build/dm40-doom-baked.bin, build/dm40doom.bin
 ```
 
 [tools/make-wad.sh](tools/make-wad.sh) builds the converter
@@ -113,15 +99,12 @@ tools/bake.py ../opendm40 build/DOOMMCU.WAD   # build/dm40-doom-baked.bin, build
 Debian's `doom-wad-shareware` package or given as an argument; the result
 always has the same md5, which the script checks (the converter here
 allocates zeroed memory, so padding bytes no longer differ between runs).
-`tools/bake.py` needs an opendm40 checkout (its emulator with a meter's
-flash dumps, and `stock/dm40fw.py`) and takes about a minute; it also packs
-the update file.
+[tools/dm40fw.py](tools/dm40fw.py) (from opendm40) packs the update file.
 
 CI ([.github/workflows/build.yml](.github/workflows/build.yml)) builds the
-firmware and checks the WAD conversion; it cannot bake (no flash dumps
-there). Releases are made with `tools/release.sh TAG ../opendm40`: a clean
-worktree of the tag, `make-wad.sh`, `bake.py`, then a GitHub release with
-`dm40doom.bin`, `dm40-doom.elf` and `SHA256SUMS`.
+firmware and the update file and checks the WAD conversion on every push;
+a `v*` tag also publishes a GitHub release with `dm40doom.bin`,
+`dm40-doom.elf` and `SHA256SUMS`.
 
 ## Running in the emulator
 
@@ -129,11 +112,8 @@ From an opendm40 checkout (its `emu/`):
 
 ```sh
 emu/run.py fwrs --name doom --app ../dm40-doom/build/dm40doom.bin \
-    --disk-add DOOMMCU.WAD::DOOMMCU.WAD --run-for 30 --shot doom.png
+    --disk-add ../dm40-doom/build/DOOMMCU.WAD::DOOMMCU.WAD --run-for 30 --shot doom.png
 ```
-
-The baked image is needed: the plain `build/dm40-doom.elf` stops with "No
-flash cache for this build and WAD".
 
 `--disk-add` copies the WAD into a private copy of the emulated disk. Taps and
 keys: `--key menu@8 --tap 400,250@9.5`, or `monitor sysbus.i2c3.touch Press
@@ -147,7 +127,7 @@ ring (the port's `printf` output) from a run that read it with
 From a [release](https://github.com/evgeny-boger/dm40-doom/releases):
 `dm40doom.bin` (the update file) and `dm40-doom.elf` (for `addr2line`, see
 below). `DOOMMCU.WAD` is not attached: make it with `tools/make-wad.sh`
-([Building](#building)); each image needs exactly that file.
+([Building](#building)).
 
 ![Installing](docs/img/install.png)
 
@@ -156,7 +136,8 @@ below). `DOOMMCU.WAD` is not attached: make it with `tools/make-wad.sh`
    its own USB disk.
 2. Copy `DOOMMCU.WAD` and `dm40doom.bin` to that disk, press update. The name must match `dm40*.bin`, and it must be
    the only such file in the root.
-3. Doom starts; press MENU, then New Game.
+3. Doom starts. The first start after an install builds the WAD-wide cache
+   (sector 6) before the title screen; then MENU, New Game.
 
 ### Going back
 

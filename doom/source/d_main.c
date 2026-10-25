@@ -958,8 +958,6 @@ void D_DoomMain(void)
     //
     delay_ms(100); // still have not figured why after WAD upload this has to be added: probably due to nvm programming.
     //
-    if (fcache_bake_mode())
-        fcache_bake_levels();
     D_DoomLoop();  // never returns
 }
 

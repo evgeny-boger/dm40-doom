@@ -174,7 +174,7 @@ void* getAddressOrCacheLumpNum(int lump, boolean storeInFlash, uint8_t flashRegi
 void** storeLumpArrayToFlash(boolean levelChanged);
 void* storeImmutableDataHeader();
 void* storeLevelDataHeader(boolean levelChanged);
-void flashCacheSetLevel(int episode, int map);
+void flashCacheNewLevel(void);
 wad_level_flash_data_t* initLevelFlashRegion();
 void cacheLumpNamesToFlash(void);
 extern void **lumpPtrArray;

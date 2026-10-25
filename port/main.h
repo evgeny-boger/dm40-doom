@@ -20,7 +20,7 @@
 #define SHOW_FPS_IN_HUD                   true
 #define SHOW_FPS_IN_AMMO                  false
 #define TIME_DEMO                         NULL
-#define NO_DEMO_LOOP                      true   // the demos play E1M5, E1M3, E1M7: not baked (port/levels.c)
+#define NO_DEMO_LOOP                      false
 #define START_MAP                         1
 #define DEBUG_OUT_PRINTF                  1
 #define USE_SHARED_USART                  0

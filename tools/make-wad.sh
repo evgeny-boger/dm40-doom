@@ -5,9 +5,9 @@
 #
 # Without an argument doom1.wad is taken from Debian's doom-wad-shareware
 # package (downloaded into build/wad/, checked against the sha256 below).
-# The result must match DOOMMCU_MD5: the flash cache baked into
-# dm40doom.bin (tools/bake.py) holds data converted from exactly this file,
-# and Doom refuses another one ("No flash cache for this build and WAD").
+# The result is checked against DOOMMCU_MD5, so every build of the WAD is the
+# same file (the converter is deterministic; a different WAD only makes Doom
+# rebuild its flash cache at start).
 set -euo pipefail
 
 DEB_URL=http://ftp.debian.org/debian/pool/non-free/d/doom-wad-shareware/doom-wad-shareware_1.9.fixed-5_all.deb
