@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ */
+/*
  * The way back from Doom to the vendor updater (and from there to opendm40
  * or the stock firmware), in the spirit of opendm40's shim (boot.rs):
  *

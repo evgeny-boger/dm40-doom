@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Evgeny Boger
 # Make DOOMMCU.WAD from the shareware doom1.wad (v1.9).
 #
 #   tools/make-wad.sh [doom1.wad]      -> build/DOOMMCU.WAD

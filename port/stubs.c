@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ */
+/*
  * DM40: no BLE multiplayer and (for now) no sound. Stubs for the MG24
  * port's network and audio drivers.
  */

@@ -1,3 +1,8 @@
+/*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Modified for the Alientek DM40 (dm40-doom) by Evgeny Boger, 2026; from
+ * next-hack/MG24_Doom_BLE fc02a55, changes in the git history.
+ */
 /**
  *  Doom Port to Silicon Labs EFR32xG24 devices and MGM240 modules
  *  by Nicola Wrachien (next-hack in the comments).

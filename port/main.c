@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Modified for the Alientek DM40 (dm40-doom) by Evgeny Boger, 2026; from
+ * next-hack/MG24_Doom_BLE fc02a55, changes in the git history.
+ */
+/*
  * Doom on the Alientek DM40: start-up (from the MG24 port's main.c).
  *
  *  This program is free software; you can redistribute it and/or

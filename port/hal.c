@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ * Register sequences follow opendm40 (MIT, Copyright (c) 2025 Wiren Board).
+ */
+/*
  * DM40 hardware layer for the Doom port.
  *
  * Sequences and values are those of opendm40 (firmware/src in the opendm40

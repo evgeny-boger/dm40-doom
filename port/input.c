@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ * Register sequences follow opendm40 (MIT, Copyright (c) 2025 Wiren Board).
+ */
+/*
  * DM40 input: the capacitive touch panel and the four side keys (both come
  * from the Hynitron controller), as the gamepad bits of boards.h. The power
  * key held 1.5 s switches the meter off.

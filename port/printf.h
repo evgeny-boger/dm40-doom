@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: MIT
+// Modified for dm40-doom by Evgeny Boger, 2026; from next-hack/MG24_Doom_BLE fc02a55.
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
 //             2014-2019, PALANDesign Hannover, Germany

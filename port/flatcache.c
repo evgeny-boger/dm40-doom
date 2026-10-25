@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ */
+/*
  * Flats (64x64 floor / ceiling pictures) that did not fit in the internal
  * flash cache: an LRU of FLAT_SLOTS pictures in TCM, loaded from the WAD on
  * the SPI flash on a miss (~2.7 ms per flat at 12.5 MHz). The span drawer

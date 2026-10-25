@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Evgeny Boger
 # Doom for the Alientek DM40 (native image for the vendor FS-loader).
 CC = arm-none-eabi-gcc
 OBJCOPY = arm-none-eabi-objcopy

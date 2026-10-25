@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Modified for the Alientek DM40 (dm40-doom) by Evgeny Boger, 2026; from
+ * next-hack/MG24_Doom_BLE fc02a55, changes in the git history.
+ */
+/*
  * DM40 board configuration for the MG24 Doom port.
  *
  * Alientek DM40: GD32F427VGT6 (Cortex-M4F, 200 MHz), ILI9488 480x320 on

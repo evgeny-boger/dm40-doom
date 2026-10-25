@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ */
+/*
  * DM40 native image (installed by the vendor FS-loader at 0x08004000).
  *
  *  A 0x08004000..0x08008000  vectors, reset

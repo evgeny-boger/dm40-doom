@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ */
+/*
  * Vector table and reset for the DM40 native image (link.ld).
  *
  * The FS-loader starts the app with msp = [0x08004000], pc = [0x08004004].

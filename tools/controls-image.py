@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Evgeny Boger
 """Draw docs/img/controls.png: the touch zones of port/input.c over a game screenshot.
 
 usage: tools/controls-image.py docs/img/emu-demo.png docs/img/controls.png

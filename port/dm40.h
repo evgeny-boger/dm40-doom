@@ -1,4 +1,8 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Evgeny Boger
+ */
+/*
  * DM40 hardware layer for the Doom port: registers and the HAL API.
  * Register values and sequences follow opendm40 (clock.rs, board.rs,
  * spiflash.rs, boot.rs, wdt.rs) and the stock firmware they were read from.

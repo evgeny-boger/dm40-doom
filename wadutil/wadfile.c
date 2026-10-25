@@ -1,4 +1,9 @@
 /*
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ * Modified for dm40-doom by Evgeny Boger, 2026 (calloc: deterministic
+ * output); from next-hack/MG24_Doom_BLE fc02a55 MCUDoomWadUtil/.
+ */
+/*
    MCUDoomWadutil by Nicola Wrachien.
 
    Based on doomhack's GBAWadutil
