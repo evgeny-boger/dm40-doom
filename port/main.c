@@ -8,6 +8,7 @@
  */
 #include <string.h>
 #include "main.h"
+#include "extMemory.h"
 #include "graphics.h"
 #include "printf.h"
 #include "z_zone.h"
@@ -19,6 +20,7 @@
 #define WAD_NAME83  "DOOMMCU WAD"
 
 uint8_t *currentSpiAddress;
+extMemMemo_t extMemMemo[EXT_MEM_MEMO];
 
 static void halt(const char *msg)
 {
