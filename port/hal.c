@@ -355,7 +355,7 @@ void hal_init(void)
 }
 
 // ---------------------------------------------------------------- SPI flash
-// SPI1 mode 3, master, 8 bit, /4 = 12.5 MHz; CS = PE4.
+// SPI1 mode 3, master, 8 bit (clock: sf_clock_check below); CS = PE4.
 #define SF_CS           4u
 
 static inline void sf_cs(bool active)
@@ -487,13 +487,20 @@ void sf_read(uint32_t addr, void *dst, uint32_t n)
     sf_xfer(addr >> 8);
     sf_xfer(addr);
     // Keep one byte in flight: the next TX is queued while the previous
-    // one shifts, then its RX is collected.
-    if (n)
+    // one shifts, then its RX is collected. Interrupts are off for each
+    // burst of up to 512 bytes (164 us at /2): at /2 a byte takes 64 CPU
+    // cycles, and a SysTick between TX and RX let the queued byte overrun
+    // the unread one; the lost byte left the last RX wait spinning (a black
+    // screen and a watchdog reset at every start). CS stays low between
+    // bursts; the flash just waits for the clock.
+    while (n)
     {
+        uint32_t k = n < 512 ? n : 512, primask;
+        __asm volatile("mrs %0, primask\n cpsid i" : "=r"(primask));
         while (!(REG32(SPI_STAT) & 2))
             ;
         REG16(SPI_DATA) = 0xFF;
-        for (uint32_t i = 0; i + 1 < n; i++)
+        for (uint32_t i = 0; i + 1 < k; i++)
         {
             while (!(REG32(SPI_STAT) & 2))
                 ;
@@ -504,7 +511,10 @@ void sf_read(uint32_t addr, void *dst, uint32_t n)
         }
         while (!(REG32(SPI_STAT) & 1))
             ;
-        d[n - 1] = (uint8_t)REG32(SPI_DATA);
+        d[k - 1] = (uint8_t)REG32(SPI_DATA);
+        __asm volatile("msr primask, %0" : : "r"(primask));
+        d += k;
+        n -= k;
     }
     sf_cs(false);
     perf_cycles[PERF_SPI] += DWT_CYCCNT_REG - t0;
