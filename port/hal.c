@@ -382,6 +382,61 @@ static void sf_af(uint32_t port, uint32_t pin)
     modify32(port + G_MODER, 3u << (2 * pin), 2u << (2 * pin));
 }
 
+// SPI1 clock: /2 = 25 MHz (PCLK1 / 2, the GD32 SPI limit; the W25Q128JV is
+// rated 50 MHz for READ 03h). Checked once at start as opendm40 does
+// (spiflash.rs clock_check): block 0 and the first FAT block are hashed at
+// /16, then read twice at /2; a difference or no 0x55AA boot signature
+// keeps /4 (opendm40's clock).
+#define SPI_CTL0_DIV2   0x0307u
+#define SPI_CTL0_DIV4   0x030Fu
+#define SPI_CTL0_DIV16  0x031Fu
+static int sf_div = 16;
+
+static void sf_config(uint32_t ctl0)
+{
+    REG32(SPI_CTL0) = ctl0;
+    REG32(SPI_CTL0) = ctl0 | (1u << 6);
+    sf_div = 2 << ((ctl0 >> 3) & 7);
+}
+
+int sf_clock_div(void)
+{
+    return sf_div;
+}
+
+static uint32_t sf_hash(uint32_t addr)
+{
+    uint8_t b[256];
+    uint32_t h = 2166136261u;
+    for (uint32_t o = 0; o < 4096; o += sizeof(b))
+    {
+        sf_read(addr + o, b, sizeof(b));
+        for (uint32_t i = 0; i < sizeof(b); i++)
+            h = (h ^ b[i]) * 16777619u;
+    }
+    return h;
+}
+
+static void sf_clock_check(void)
+{
+    uint8_t bs[512];
+    sf_read(0, bs, sizeof(bs));
+    uint32_t bps = bs[11] | bs[12] << 8, rsvd = bs[14] | bs[15] << 8;
+    if (bs[510] != 0x55 || bs[511] != 0xAA || bps < 512 || bps > 4096 || !rsvd)
+    {
+        sf_config(SPI_CTL0_DIV4);
+        return;
+    }
+    uint32_t fat = rsvd * bps, b0 = sf_hash(0), f0 = sf_hash(fat);
+    sf_config(SPI_CTL0_DIV2);
+    for (int pass = 0; pass < 2; pass++)
+        if (sf_hash(0) != b0 || sf_hash(fat) != f0)
+        {
+            sf_config(SPI_CTL0_DIV4);
+            return;
+        }
+}
+
 void sf_init(void)
 {
     modify32(RCU_AHB1EN, 0, (1u << 2) | (1u << 3) | (1u << 4));
@@ -395,8 +450,7 @@ void sf_init(void)
     sf_af(GPIOC, 3);
     REG32(SPI_CTL0) = 0;
     modify32(SPI_I2SCTL, 1u << 11, 0);
-    REG32(SPI_CTL0) = 0x030F;
-    REG32(SPI_CTL0) = 0x030F | (1u << 6);
+    sf_config(SPI_CTL0_DIV16);
     (void)REG32(SPI_DATA);
     // An erase left running by a reset: wait for WIP to clear (<= 500 ms).
     uint32_t t = time_ms();
@@ -409,6 +463,7 @@ void sf_init(void)
         if (!(sr & 1) || time_ms() - t > 500)
             break;
     }
+    sf_clock_check();
 }
 
 uint32_t sf_jedec(void)
@@ -424,6 +479,7 @@ uint32_t sf_jedec(void)
 
 void sf_read(uint32_t addr, void *dst, uint32_t n)
 {
+    uint32_t t0 = DWT_CYCCNT_REG;
     uint8_t *d = dst;
     sf_cs(true);
     sf_xfer(0x03);
@@ -451,6 +507,7 @@ void sf_read(uint32_t addr, void *dst, uint32_t n)
         d[n - 1] = (uint8_t)REG32(SPI_DATA);
     }
     sf_cs(false);
+    perf_cycles[PERF_SPI] += DWT_CYCCNT_REG - t0;
 }
 
 // ---------------------------------------------------------------- WAD on FAT

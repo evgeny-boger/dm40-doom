@@ -71,6 +71,7 @@ void initGraphics()
 #pragma GCC optimize ("O3")
 void startDisplayRefresh(uint8_t bufferNumber, int rowsToUpdate)
 {
+    uint32_t perf_t0 = DWT_CYCCNT_REG;
     static uint16_t pal[256];
     static uint32_t line[LCD_W / 2];
     const volatile uint16_t *pp = displayData.pPalette;
@@ -109,8 +110,60 @@ void startDisplayRefresh(uint8_t bufferNumber, int rowsToUpdate)
     }
     displayData.dmaBusy = 0;
     wdt_kick();
+    perf_cycles[PERF_BLIT] += DWT_CYCCNT_REG - perf_t0;
 }
 #pragma GCC pop_options
+
+uint32_t perf_cycles[PERF_N];
+
+// 8x8 text straight to the panel (RGB565), outside the game picture.
+static void lcdText(int x, int y, const char *str, uint16_t fg, uint16_t bg)
+{
+    int n = strlen(str);
+    if (x + n * 8 > LCD_W)
+        n = (LCD_W - x) / 8;
+    lcd_window(x, y, n * 8, 8);
+    for (int row = 0; row < 8; row++)
+        for (int i = 0; i < n; i++)
+        {
+            uint8_t fb = font8x8_basic[0x7F & str[i]][row];
+            for (int cx = 0; cx < 8; cx++, fb >>= 1)
+                LCD_DATA = (fb & 1) ? fg : bg;
+        }
+}
+
+// Once per frame: every second, the average ms per frame of the whole frame,
+// the game tics, the 3D view, the panel blit and the SPI flash reads (these
+// happen inside the others, mostly the 3D view), in the strip above the
+// picture.
+void perf_frame(void)
+{
+    static uint32_t t0, frames;
+    uint32_t now = DWT_CYCCNT_REG;
+    frames++;
+    if (now - t0 < HCLK_HZ)
+        return;
+    uint32_t k = HCLK_HZ / 10000u;  // cycles per 0.1 ms
+    uint32_t total = (now - t0) / k / frames;
+    uint32_t v[PERF_N];
+    for (int i = 0; i < PERF_N; i++)
+    {
+        v[i] = perf_cycles[i] / k / frames;
+        perf_cycles[i] = 0;
+    }
+    uint32_t fps10 = (uint32_t) (frames * 10ull * HCLK_HZ / (now - t0));
+    char line[64];
+    snprintf(line, sizeof(line), "%u.%u fps  frame %u.%u tic %u.%u 3d %u.%u spi %u.%u lcd %u.%u ms  /%d",
+             (unsigned) fps10 / 10, (unsigned) fps10 % 10,
+             (unsigned) total / 10, (unsigned) total % 10,
+             (unsigned) v[PERF_TIC] / 10, (unsigned) v[PERF_TIC] % 10,
+             (unsigned) v[PERF_RENDER] / 10, (unsigned) v[PERF_RENDER] % 10,
+             (unsigned) v[PERF_SPI] / 10, (unsigned) v[PERF_SPI] % 10,
+             (unsigned) v[PERF_BLIT] / 10, (unsigned) v[PERF_BLIT] % 10, sf_clock_div());
+    lcdText(0, 1, line, 0xFFE0, 0x0000);
+    t0 = now;
+    frames = 0;
+}
 
 static uint8_t penColor = 1;
 static uint8_t penBackground = 0;

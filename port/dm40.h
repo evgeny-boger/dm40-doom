@@ -67,6 +67,14 @@ void enter_updater(const char *why) __attribute__((noreturn));
 void input_init(void);
 uint16_t input_keys(void);
 
+// Frame time breakdown (graphics.c perf_frame): DWT cycles spent per part,
+// shown once a second in the black strip above the picture.
+enum { PERF_TIC, PERF_RENDER, PERF_BLIT, PERF_SPI, PERF_N };
+extern uint32_t perf_cycles[PERF_N];
+#define DWT_CYCCNT_REG  REG32(0xE0001004u)
+void perf_frame(void);
+int sf_clock_div(void);                   // SPI1 prescaler chosen at start (2 or 4)
+
 // Debug text over the console screen (graphics.c) and the emulator log.
 void dbg_puts(const char *s);
 

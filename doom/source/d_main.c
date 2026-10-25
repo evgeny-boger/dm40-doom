@@ -90,6 +90,7 @@
 #include "audio.h"
 #include "graphics.h"
 #include "main.h"
+#include "dm40.h"
 
 
 #include "doom_ble.h"
@@ -237,7 +238,11 @@ static void D_Display(void)
         viewactive = (!(_g->automapmode & am_active) || (_g->automapmode & am_overlay));
         // Now do the drawing
         if (viewactive)
+        {
+            uint32_t perf_t0 = DWT_CYCCNT_REG;
             R_RenderPlayerView(&_g->players[_g->displayplayer]);
+            perf_cycles[PERF_RENDER] += DWT_CYCCNT_REG - perf_t0;
+        }
         if ((_g->automapmode & am_active))
         {
             AM_Drawer();
@@ -368,7 +373,9 @@ static void D_DoomLoop(void)
              else
              {
                //uint32_t n = I_GetTimeMicrosecs();
+               uint32_t perf_t0 = DWT_CYCCNT_REG;
                TryRunTics();
+               perf_cycles[PERF_TIC] += DWT_CYCCNT_REG - perf_t0;
                //n = I_GetTimeMicrosecs() - n;
                //printf ("Try RunTics %d us\r\n", n);
              }
@@ -387,6 +394,7 @@ static void D_DoomLoop(void)
             S_UpdateSounds(_g->players[_g->displayplayer].mo); // move positional sounds
         // Update display, next frame, with current state.
         D_Display();
+        perf_frame();
  #if COUNT_DIVISIONS
         if (oldMaxDivisions < divisions)
         {
